@@ -1,0 +1,54 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.database import get_db
+from app.utils.security import hash_password, verify_password, create_access_token
+from sqlalchemy import text
+
+router = APIRouter()
+
+# ✅ REGISTER
+@router.post("/register")
+def register(name: str, email: str, password: str, role: str = "patient", db: Session = Depends(get_db)):
+
+    # prevent doctor/admin self registration
+    if role in ["doctor", "admin"]:
+        role = "patient"
+
+    # check if user exists
+    existing_user = db.execute(text("SELECT * FROM users WHERE email=:email"), {"email": email}).fetchone()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+
+    hashed_pw = hash_password(password)
+
+    db.execute(text("""
+        INSERT INTO users (name, email, password_hash, role)
+        VALUES (:name, :email, :password, :role)
+    """), {
+        "name": name,
+        "email": email,
+        "password": hashed_pw,
+        "role": role
+    })
+
+    db.commit()
+
+    return {"message": "User registered successfully"}
+
+
+# ✅ LOGIN
+@router.post("/login")
+def login(email: str, password: str, db: Session = Depends(get_db)):
+
+    user = db.execute(text("SELECT * FROM users WHERE email=:email"), {"email": email}).fetchone()
+
+    if not user or not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = create_access_token({"user_id": user.id, "role": user.role})
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "role": user.role
+    }
