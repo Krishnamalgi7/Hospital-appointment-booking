@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Dashboard — MediCare Portal</title>
+  <meta name="description" content="Patient dashboard for booking appointments and viewing medical history." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    /* ── Page-specific overrides ────────────────────────────────────────── */
+    .section-card {
+      padding: 28px 28px 32px;
+    }
+
+    /* Book Appointment form layout */
+    .book-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 20px;
+    }
+    .book-grid .form-group:last-of-type { grid-column: 1 / -1; }
+    @media (max-width: 600px) { .book-grid { grid-template-columns: 1fr; } }
+
+    /* Appointment list row actions */
+    .appt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* Profile strip */
+    .profile-strip {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      background: rgba(14,165,233,0.06);
+      border: 1px solid rgba(14,165,233,0.15);
+      border-radius: var(--radius-md);
+      margin-bottom: 28px;
+    }
+    .profile-avatar {
+      width: 52px; height: 52px;
+      background: var(--accent-grad);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      box-shadow: 0 4px 16px rgba(14,165,233,0.3);
+    }
+    .profile-info h3 { font-size: 1.1rem; margin-bottom: 2px; }
+    .profile-info p  { font-size: 0.83rem; color: var(--text-secondary); }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+  <div id="toast-container"></div>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="dashboard-header">
+    <div class="header-brand">
+      <div class="brand-icon">🏥</div>
+      <span class="brand-name">MediCare Portal</span>
+    </div>
+    <div class="header-user">
+      <div class="user-pill">
+        <div class="user-avatar" id="header-avatar">P</div>
+        <div class="user-info-text">
+          <span class="user-name-text" id="header-name">Patient</span>
+          <span class="user-role-text">Patient</span>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="logout()" id="logout-btn">
+        🚪 Logout
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <main class="dashboard-container">
+
+    <!-- Welcome / Profile strip -->
+    <div class="profile-strip">
+      <div class="profile-avatar" id="profile-avatar">P</div>
+      <div class="profile-info">
+        <h3 id="profile-name">Welcome back!</h3>
+        <p>Manage your appointments and view your medical records below.</p>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-book"   onclick="switchTab('book')">📅 Book Appointment</button>
+      <button class="tab-btn"        id="tab-appts"  onclick="switchTab('appts')">🗓 My Appointments</button>
+      <button class="tab-btn"        id="tab-history" onclick="switchTab('history')">📋 Medical History</button>
+    </div>
+
+    <!-- ── TAB: Book Appointment ─────────────────────────────────────────── -->
+    <div class="tab-panel active" id="panel-book">
+      <div class="glass-card section-card">
+        <div class="dashboard-title">
+          <h2>📅 Book an Appointment</h2>
+          <p>Select a doctor and choose your preferred date.</p>
+        </div>
+
+        <div id="book-alert"></div>
+
+        <form id="book-form" onsubmit="bookAppointment(event)">
+          <div class="book-grid">
+            <div class="form-group">
+              <label for="doctor-select">Select Doctor</label>
+              <select id="doctor-select" required>
+                <option value="">Loading doctors…</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="appt-date">Appointment Date</label>
+              <input type="date" id="appt-date" required />
+            </div>
+            <div class="form-group">
+              <label for="appt-notes">Notes (optional)</label>
+              <input type="text" id="appt-notes" placeholder="Any symptoms or special requests…" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary" id="book-btn">
+            📅 Confirm Booking
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ── TAB: My Appointments ──────────────────────────────────────────── -->
+    <div class="tab-panel" id="panel-appts">
+      <div class="glass-card section-card">
+        <div class="dashboard-title">
+          <h2>🗓 My Appointments</h2>
+          <p>View and manage your upcoming and past appointments.</p>
+        </div>
+        <div id="appts-alert"></div>
+        <div id="appts-content">
+          <div class="empty-state">
+            <div class="empty-icon">⏳</div>
+            <p>Loading appointments…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Medical History ───────────────────────────────────────────── -->
+    <div class="tab-panel" id="panel-history">
+      <div class="glass-card section-card">
+        <div class="dashboard-title">
+          <h2>📋 Medical History</h2>
+          <p>Your diagnoses, prescribed medicines, and follow-up dates.</p>
+        </div>
+        <div id="history-alert"></div>
+        <div id="history-content">
+          <div class="empty-state">
+            <div class="empty-icon">⏳</div>
+            <p>Loading records…</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="js/patient.js"></script>
+</body>
+</html>

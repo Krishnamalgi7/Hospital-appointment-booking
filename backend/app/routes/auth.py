@@ -21,7 +21,7 @@ def register(name: str, email: str, password: str, role: str = "patient", db: Se
 
     hashed_pw = hash_password(password)
 
-    db.execute(text("""
+    user_result = db.execute(text("""
         INSERT INTO users (name, email, password_hash, role)
         VALUES (:name, :email, :password, :role)
     """), {
@@ -30,6 +30,15 @@ def register(name: str, email: str, password: str, role: str = "patient", db: Se
         "password": hashed_pw,
         "role": role
     })
+
+    new_user_id = user_result.lastrowid
+
+    # Automatically create linked patient profile
+    if role == "patient":
+        db.execute(text("""
+            INSERT INTO patients (user_id)
+            VALUES (:user_id)
+        """), {"user_id": new_user_id})
 
     db.commit()
 

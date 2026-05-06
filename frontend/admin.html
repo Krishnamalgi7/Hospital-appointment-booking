@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel — MediCare Portal</title>
+  <meta name="description" content="Hospital admin panel to manage hospitals and doctors." />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .section-card { padding: 28px 28px 32px; }
+
+    /* ── Admin Header accent ──────────────────────────────────────── */
+    .brand-icon.admin-icon { background: linear-gradient(135deg, #8b5cf6, #6d28d9); box-shadow: 0 4px 16px rgba(139,92,246,0.4); }
+    .user-role-text.admin-role { color: #a78bfa; }
+
+    /* ── Overview strip ───────────────────────────────────────────── */
+    .admin-overview {
+      background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(109,40,217,0.06));
+      border: 1px solid rgba(139,92,246,0.2);
+      border-radius: var(--radius-lg);
+      padding: 22px 28px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .admin-icon-big {
+      width: 60px; height: 60px;
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.9rem;
+      flex-shrink: 0;
+      box-shadow: 0 4px 24px rgba(139,92,246,0.4);
+    }
+    .admin-overview-info h3 { font-size: 1.15rem; margin-bottom: 3px; }
+    .admin-overview-info p  { color: var(--text-secondary); font-size: 0.85rem; }
+
+    /* ── Admin stat cards (purple accent) ─────────────────────────── */
+    .stat-card.admin-stat {
+      background: rgba(139,92,246,0.09);
+      border: 1px solid rgba(139,92,246,0.22);
+    }
+    .stat-card.admin-stat .stat-num { color: #a78bfa; }
+
+    /* ── Form 2-col ───────────────────────────────────────────────── */
+    .form-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 20px;
+    }
+    .form-grid-2 .full { grid-column: 1 / -1; }
+    @media (max-width: 600px) { .form-grid-2 { grid-template-columns: 1fr; } }
+
+    /* ── Hospitals / Doctors lists ────────────────────────────────── */
+    .hospital-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .hospital-card {
+      background: rgba(139,92,246,0.07);
+      border: 1px solid rgba(139,92,246,0.18);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      transition: all var(--transition);
+    }
+    .hospital-card:hover {
+      border-color: rgba(139,92,246,0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(139,92,246,0.15);
+    }
+    .hospital-card h4 {
+      font-size: 1rem;
+      margin-bottom: 6px;
+      color: #c4b5fd;
+    }
+    .hospital-card p {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+    .hospital-card .h-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 10px;
+      background: rgba(139,92,246,0.15);
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.78rem;
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    /* ── Section divider ──────────────────────────────────────────── */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 24px 0 20px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .section-divider::before, .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Tab purple accent ────────────────────────────────────────── */
+    .tabs-admin .tab-btn.active {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      box-shadow: 0 2px 12px rgba(139,92,246,0.35);
+    }
+
+    /* ── Button purple variant ────────────────────────────────────── */
+    .btn-purple {
+      background: linear-gradient(135deg, #8b5cf6, #6d28d9);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(139,92,246,0.3);
+    }
+    .btn-purple:hover { box-shadow: 0 6px 28px rgba(139,92,246,0.5); transform: translateY(-1px); }
+  </style>
+</head>
+<body>
+  <div class="bg-glow" style="--glow-color:rgba(139,92,246,0.12)"></div>
+  <div id="toast-container"></div>
+
+  <!-- ── Header ─────────────────────────────────────────────────────────── -->
+  <header class="dashboard-header">
+    <div class="header-brand">
+      <div class="brand-icon admin-icon">🏛️</div>
+      <span class="brand-name" style="background:linear-gradient(135deg,#a78bfa,#6d28d9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+        Admin Panel
+      </span>
+    </div>
+    <div class="header-user">
+      <div class="user-pill">
+        <div class="user-avatar" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)">A</div>
+        <div class="user-info-text">
+          <span class="user-name-text" id="header-name">Admin</span>
+          <span class="user-role-text admin-role">Administrator</span>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="logout()">🚪 Logout</button>
+    </div>
+  </header>
+
+  <!-- ── Main ───────────────────────────────────────────────────────────── -->
+  <main class="dashboard-container">
+
+    <!-- Overview strip -->
+    <div class="admin-overview">
+      <div class="admin-icon-big">🏛️</div>
+      <div class="admin-overview-info">
+        <h3>Hospital Management System</h3>
+        <p>Create and manage hospitals, doctors, and system-wide settings.</p>
+      </div>
+    </div>
+
+    <!-- System stats -->
+    <div class="stats-grid" id="admin-stats-grid" style="margin-bottom:32px">
+      <div class="stat-card admin-stat">
+        <div class="stat-icon">🏥</div>
+        <div class="stat-num" id="stat-hospitals">—</div>
+        <div class="stat-label">Hospitals</div>
+      </div>
+      <div class="stat-card total">
+        <div class="stat-icon">👨‍⚕️</div>
+        <div class="stat-num" id="stat-doctors">—</div>
+        <div class="stat-label">Doctors</div>
+      </div>
+      <div class="stat-card done">
+        <div class="stat-icon">🧑‍🤝‍🧑</div>
+        <div class="stat-num" id="stat-patients">—</div>
+        <div class="stat-label">Patients</div>
+      </div>
+      <div class="stat-card pending">
+        <div class="stat-icon">📅</div>
+        <div class="stat-num" id="stat-appointments">—</div>
+        <div class="stat-label">Appointments</div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs tabs-admin">
+      <button class="tab-btn active" id="tab-hospitals" onclick="switchTab('hospitals')">🏥 Hospitals</button>
+      <button class="tab-btn"        id="tab-doctors"   onclick="switchTab('doctors')">👨‍⚕️ Doctors</button>
+    </div>
+
+    <!-- ══ TAB: Hospitals ════════════════════════════════════════════════════ -->
+    <div class="tab-panel active" id="panel-hospitals">
+      <div class="glass-card section-card">
+
+        <!-- Create Hospital Form -->
+        <div class="dashboard-title">
+          <h2>🏥 Create Hospital</h2>
+          <p>Add a new hospital to the network.</p>
+        </div>
+        <div id="hospital-form-alert"></div>
+        <form id="hospital-form" onsubmit="createHospital(event)">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="h-name">Hospital Name</label>
+              <input type="text" id="h-name" placeholder="e.g. City General Hospital" required />
+            </div>
+            <div class="form-group">
+              <label for="h-location">Location / City</label>
+              <input type="text" id="h-location" placeholder="e.g. Mumbai, Maharashtra" />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-purple" id="create-hospital-btn">
+            ➕ Create Hospital
+          </button>
+        </form>
+
+        <!-- Hospital list -->
+        <div class="section-divider">All Hospitals</div>
+        <div id="hospitals-list">
+          <div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ TAB: Doctors ══════════════════════════════════════════════════════ -->
+    <div class="tab-panel" id="panel-doctors">
+      <div class="glass-card section-card">
+
+        <!-- Create Doctor Form -->
+        <div class="dashboard-title">
+          <h2>👨‍⚕️ Create Doctor Account</h2>
+          <p>Register a new doctor and link them to a hospital.</p>
+        </div>
+        <div id="doctor-form-alert"></div>
+        <form id="doctor-form" onsubmit="createDoctor(event)">
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="d-name">Full Name</label>
+              <input type="text" id="d-name" placeholder="Dr. Priya Sharma" required />
+            </div>
+            <div class="form-group">
+              <label for="d-email">Email Address</label>
+              <input type="email" id="d-email" placeholder="doctor@hospital.com" required />
+            </div>
+            <div class="form-group">
+              <label for="d-password">Password</label>
+              <input type="password" id="d-password" placeholder="Min. 6 characters" required minlength="6" />
+            </div>
+            <div class="form-group">
+              <label for="d-phone">Phone Number</label>
+              <input type="tel" id="d-phone" placeholder="9876543210" />
+            </div>
+            <div class="form-group">
+              <label for="d-specialization">Specialization</label>
+              <input type="text" id="d-specialization" placeholder="e.g. Cardiologist" required />
+            </div>
+            <div class="form-group">
+              <label for="d-hospital">Assign to Hospital</label>
+              <select id="d-hospital" required>
+                <option value="">— Select Hospital —</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-purple" id="create-doctor-btn">
+            ➕ Create Doctor Account
+          </button>
+        </form>
+
+        <!-- Doctors list -->
+        <div class="section-divider">All Doctors</div>
+        <div id="doctors-list">
+          <div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>
