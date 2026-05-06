@@ -3,227 +3,181 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hospital Appointment Booking — Login</title>
+  <title>Login — MediCare</title>
   <meta name="description" content="Secure login and registration portal for the Hospital Appointment Booking System." />
   <link rel="stylesheet" href="css/styles.css" />
   <style>
-    /* ── Auth Page Specific ─────────────────────────────────────────────── */
-    body {
+    body { padding: 0; margin: 0; overflow: hidden; }
+    
+    /* Fullscreen Background */
+    .auth-layout-fullscreen {
+      min-height: 100vh;
       display: flex;
       align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 24px;
-    }
-
-    .auth-wrapper {
-      width: 100%;
-      max-width: 440px;
+      justify-content: space-between;
       position: relative;
+      background-image: url('assets/bg.png');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      padding: 0 10%;
+    }
+    
+    /* Subtle dark overlay */
+    .auth-layout-fullscreen::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4); /* subtle dark overlay */
       z-index: 1;
     }
 
-    /* Brand at top */
-    .auth-brand {
-      text-align: center;
-      margin-bottom: 36px;
+    /* Centered Auth Card */
+    .auth-card-centered {
+      position: relative;
+      z-index: 2;
+      width: 100%;
+      max-width: 480px;
+      background: rgba(15, 23, 42, 0.85); /* Hybrid solid/glass */
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-lg);
+      padding: 48px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    .auth-brand-icon {
-      width: 64px; height: 64px;
-      background: var(--accent-grad);
-      border-radius: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      margin: 0 auto 14px;
-      box-shadow: 0 8px 32px rgba(14,165,233,0.4);
-      animation: iconPulse 3s ease-in-out infinite;
-    }
-    @keyframes iconPulse {
-      0%,100% { box-shadow: 0 8px 32px rgba(14,165,233,0.4); }
-      50%      { box-shadow: 0 8px 48px rgba(14,165,233,0.65); }
-    }
-    .auth-brand h1 {
-      font-size: 1.9rem;
-      background: var(--accent-grad);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 4px;
-    }
-    .auth-brand p {
-      color: var(--text-muted);
-      font-size: 0.9rem;
+    
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Card */
-    .auth-card {
-      padding: 36px 32px;
+    .auth-brand-center {
+      display: none;
     }
 
-    /* Tab switcher */
+    .auth-text-left {
+      position: relative;
+      z-index: 2;
+      color: #fff;
+      max-width: 500px;
+      text-align: left;
+    }
+    .auth-text-left h1 {
+      font-size: 3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      line-height: 1.2;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    }
+    .auth-text-left p {
+      font-size: 1.15rem;
+      color: rgba(255, 255, 255, 0.9);
+      line-height: 1.6;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    }
+
+    /* Tabs */
     .auth-tabs {
-      display: flex;
-      margin-bottom: 28px;
-      background: rgba(255,255,255,0.04);
-      border-radius: var(--radius-md);
+      display: flex; gap: 8px; margin-bottom: 32px;
+      background: rgba(255, 255, 255, 0.05);
       padding: 4px;
-      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
     }
     .auth-tab-btn {
-      flex: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--text-secondary);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all var(--transition);
+      flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-secondary);
+      font-weight: 500; font-size: 0.9rem; font-family: 'Inter', sans-serif; cursor: pointer;
+      border-radius: 4px; transition: all var(--transition);
     }
-    .auth-tab-btn.active {
-      background: var(--accent-grad);
-      color: #fff;
-      box-shadow: 0 2px 12px rgba(14,165,233,0.3);
-    }
-
-    .auth-form { display: none; }
-    .auth-form.active { display: block; animation: fadeInUp 0.3s ease; }
-
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin: 20px 0;
-      color: var(--text-muted);
-      font-size: 0.8rem;
-    }
-    .divider::before, .divider::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: var(--border);
-    }
-
-    .form-footer {
-      text-align: center;
-      margin-top: 16px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-    .form-footer a {
-      color: var(--accent-1);
-      text-decoration: none;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    .form-footer a:hover { text-decoration: underline; }
-
-    #alert-box { margin-bottom: 16px; }
-
-    /* Password eye toggle */
-    .input-wrap { position: relative; }
-    .input-wrap input { padding-right: 44px; }
+    .auth-tab-btn:hover { color: var(--text-primary); }
+    .auth-tab-btn.active { background: var(--bg-card-hover); color: var(--text-primary); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    
+    .auth-form { display: none; animation: fadeIn 0.3s ease; }
+    .auth-form.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
     .eye-btn {
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 1rem;
-      padding: 4px;
-      transition: color var(--transition);
+      position: absolute; right: 14px; top: 18px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;
     }
-    .eye-btn:hover { color: var(--accent-1); }
+    .form-footer { margin-top: 24px; text-align: center; color: var(--text-secondary); font-size: 0.9rem; }
+    #alert-box { margin-bottom: 20px; }
+    .alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.9rem; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;}
+    .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--danger); }
   </style>
 </head>
 <body>
-  <div class="bg-glow"></div>
+
   <div id="toast-container"></div>
 
-  <div class="auth-wrapper">
-    <!-- Brand -->
-    <div class="auth-brand">
-      <div class="auth-brand-icon">🏥</div>
-      <h1>MediCare Portal</h1>
-      <p>Your health, our priority</p>
+  <div class="auth-layout-fullscreen">
+    
+    <div class="auth-text-left">
+      <h1>Hospitum Core</h1>
+      <p>The enterprise-grade hospital management and patient scheduling platform designed for modern healthcare.</p>
     </div>
 
-    <!-- Card -->
-    <div class="glass-card auth-card">
-      <!-- Tabs -->
+    <div class="auth-card-centered" style="margin: 0;">
+
       <div class="auth-tabs">
-        <button class="auth-tab-btn active" id="tab-login"    onclick="switchTab('login')">Sign In</button>
-        <button class="auth-tab-btn"        id="tab-register" onclick="switchTab('register')">Register</button>
+        <button class="auth-tab-btn active" id="tab-login" onclick="switchTab('login')">Sign In</button>
+        <button class="auth-tab-btn" id="tab-register" onclick="switchTab('register')">Create Account</button>
       </div>
 
-      <!-- Alert box -->
       <div id="alert-box"></div>
 
       <!-- ── Login Form ──────────────────────────────────────────────────── -->
       <form id="login-form" class="auth-form active" onsubmit="handleLogin(event)">
-        <div class="form-group">
+        <div class="form-floating">
+          <input type="email" id="login-email" placeholder=" " required autocomplete="email" />
           <label for="login-email">Email Address</label>
-          <input type="email" id="login-email" placeholder="doctor@hospital.com" required autocomplete="email" />
         </div>
-        <div class="form-group">
+        <div class="form-floating">
+          <input type="password" id="login-password" placeholder=" " required autocomplete="current-password" />
           <label for="login-password">Password</label>
-          <div class="input-wrap">
-            <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" />
-            <button type="button" class="eye-btn" onclick="togglePw('login-password', this)">👁</button>
-          </div>
+          <button type="button" class="eye-btn" onclick="togglePw('login-password', this)">👁</button>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+        <button type="submit" class="btn btn-primary btn-full mt-4" id="login-btn" style="padding: 14px; font-size: 1rem; font-weight: 600;">
           Sign In
         </button>
 
         <div class="form-footer">
-          No account? <a onclick="switchTab('register')">Register as Patient</a>
+          Don't have an account? <a href="#" onclick="switchTab('register'); return false;" style="color: var(--accent-primary); font-weight: 500;">Register here</a>
         </div>
       </form>
 
       <!-- ── Register Form ───────────────────────────────────────────────── -->
       <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
-        <div class="form-group">
+        <div class="form-floating">
+          <input type="text" id="reg-name" placeholder=" " required autocomplete="name" />
           <label for="reg-name">Full Name</label>
-          <input type="text" id="reg-name" placeholder="John Doe" required autocomplete="name" />
         </div>
-        <div class="form-group">
+        <div class="form-floating">
+          <input type="email" id="reg-email" placeholder=" " required autocomplete="email" />
           <label for="reg-email">Email Address</label>
-          <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email" />
         </div>
-        <div class="form-group">
-          <label for="reg-password">Password</label>
-          <div class="input-wrap">
-            <input type="password" id="reg-password" placeholder="Min. 6 characters" required minlength="6" autocomplete="new-password" />
-            <button type="button" class="eye-btn" onclick="togglePw('reg-password', this)">👁</button>
-          </div>
+        <div class="form-floating">
+          <input type="password" id="reg-password" placeholder=" " required minlength="6" autocomplete="new-password" />
+          <label for="reg-password">Password (Min 6 chars)</label>
+          <button type="button" class="eye-btn" onclick="togglePw('reg-password', this)">👁</button>
         </div>
-        <div class="form-group">
+        <div class="form-floating">
+          <input type="password" id="reg-confirm" placeholder=" " required autocomplete="new-password" />
           <label for="reg-confirm">Confirm Password</label>
-          <div class="input-wrap">
-            <input type="password" id="reg-confirm" placeholder="Repeat your password" required autocomplete="new-password" />
-            <button type="button" class="eye-btn" onclick="togglePw('reg-confirm', this)">👁</button>
-          </div>
+          <button type="button" class="eye-btn" onclick="togglePw('reg-confirm', this)">👁</button>
         </div>
 
-        <div class="divider">Patient registration only</div>
-
-        <button type="submit" class="btn btn-primary btn-full" id="register-btn">
-          Create Account
+        <button type="submit" class="btn btn-primary btn-full mt-4" id="register-btn" style="padding: 14px; font-size: 1rem; font-weight: 600;">
+          Create Patient Account
         </button>
 
         <div class="form-footer">
-          Already have an account? <a onclick="switchTab('login')">Sign In</a>
+          Already have an account? <a href="#" onclick="switchTab('login'); return false;" style="color: var(--accent-primary); font-weight: 500;">Sign In</a>
         </div>
       </form>
+
     </div>
   </div>
 

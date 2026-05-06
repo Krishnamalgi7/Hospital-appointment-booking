@@ -151,3 +151,101 @@ def admin_stats(
         "total_patients":  patients.cnt,
         "total_appointments": appts.cnt,
     }
+
+# ─── PUT /admin/update-hospital/{hospital_id} ─────────────────────────────────
+@router.put("/update-hospital/{hospital_id}")
+def update_hospital(
+    hospital_id: int,
+    name: str,
+    location: str = "",
+    db: Session = Depends(get_db),
+    user=Depends(require_role("admin"))
+):
+    hospital = db.execute(text("SELECT id FROM hospitals WHERE id = :id"), {"id": hospital_id}).fetchone()
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+        
+    db.execute(text("UPDATE hospitals SET name = :name, location = :loc WHERE id = :id"),
+               {"name": name, "loc": location, "id": hospital_id})
+               
+    # Sync hospital_name in doctors table
+    db.execute(text("UPDATE doctors SET hospital_name = :name WHERE hospital_id = :id"),
+               {"name": name, "id": hospital_id})
+               
+    db.commit()
+    return {"message": "Hospital updated successfully"}
+
+# ─── DELETE /admin/delete-hospital/{hospital_id} ──────────────────────────────
+@router.delete("/delete-hospital/{hospital_id}")
+def delete_hospital(
+    hospital_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("admin"))
+):
+    hospital = db.execute(text("SELECT id FROM hospitals WHERE id = :id"), {"id": hospital_id}).fetchone()
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+        
+    doctors = db.execute(text("SELECT id FROM doctors WHERE hospital_id = :id"), {"id": hospital_id}).fetchall()
+    if doctors:
+        raise HTTPException(status_code=400, detail="Cannot delete hospital with active doctors assigned.")
+        
+    db.execute(text("DELETE FROM hospitals WHERE id = :id"), {"id": hospital_id})
+    db.commit()
+    return {"message": "Hospital deleted successfully"}
+
+# ─── PUT /admin/update-doctor/{doctor_id} ─────────────────────────────────────
+@router.put("/update-doctor/{doctor_id}")
+def update_doctor(
+    doctor_id: int,
+    name: str,
+    specialization: str,
+    hospital_id: int,
+    phone: str = "",
+    status: str = "active",
+    db: Session = Depends(get_db),
+    user=Depends(require_role("admin"))
+):
+    doctor = db.execute(text("SELECT id, user_id FROM doctors WHERE id = :id"), {"id": doctor_id}).fetchone()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+        
+    hospital = db.execute(text("SELECT name FROM hospitals WHERE id = :id"), {"id": hospital_id}).fetchone()
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+        
+    db.execute(text("UPDATE users SET name = :name WHERE id = :uid"), {"name": name, "uid": doctor.user_id})
+    db.execute(text("""
+        UPDATE doctors 
+        SET specialization = :spec, hospital_id = :hid, hospital_name = :hname, phone = :phone, status = :status
+        WHERE id = :id
+    """), {
+        "spec": specialization, "hid": hospital_id, "hname": hospital.name, 
+        "phone": phone, "status": status, "id": doctor_id
+    })
+    db.commit()
+    return {"message": "Doctor updated successfully"}
+
+# ─── DELETE /admin/delete-doctor/{doctor_id} ──────────────────────────────────
+@router.delete("/delete-doctor/{doctor_id}")
+def delete_doctor(
+    doctor_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("admin"))
+):
+    doctor = db.execute(text("SELECT id, user_id FROM doctors WHERE id = :id"), {"id": doctor_id}).fetchone()
+    if not doctor:
+        raise HTTPException(status_code=404, detail="Doctor not found")
+        
+    # Prevent deletion if appointments or medical records exist
+    appts = db.execute(text("SELECT id FROM appointments WHERE doctor_id = :id"), {"id": doctor_id}).fetchone()
+    records = db.execute(text("SELECT id FROM medical_records WHERE doctor_id = :id"), {"id": doctor_id}).fetchone()
+    
+    if appts or records:
+        raise HTTPException(status_code=400, detail="Cannot delete doctor with existing appointments or medical records.")
+        
+    # Safe delete if no records
+    db.execute(text("DELETE FROM doctors WHERE id = :id"), {"id": doctor_id})
+    db.execute(text("DELETE FROM users WHERE id = :uid"), {"uid": doctor.user_id})
+    db.commit()
+    return {"message": "Doctor deleted successfully"}

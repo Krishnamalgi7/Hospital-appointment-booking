@@ -1,305 +1,288 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   patient.js  — Patient Dashboard logic
+   patient.js  — Patient Panel logic (SaaS Redesign)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const API = 'http://127.0.0.1:8000';
 
-/* ── Auth guard ─────────────────────────────────────────────────────────── */
+/* ── Auth Guard ──────────────────────────────────────────────────────────── */
 const token = localStorage.getItem('token');
 const role  = localStorage.getItem('role');
 if (!token || role !== 'patient') {
   window.location.href = 'index.html';
 }
 
-/* ── Auth headers helper ─────────────────────────────────────────────────── */
 function authHeaders() {
   return { 'Authorization': `Bearer ${token}` };
 }
 
-/* ── Toast ───────────────────────────────────────────────────────────────── */
-function showToast(msg, type = 'success') {
-  const icons = { success: '✅', error: '❌', info: 'ℹ️' };
-  const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
-  el.innerHTML = `${icons[type] ?? 'ℹ️'} ${msg}`;
-  document.getElementById('toast-container').appendChild(el);
-  setTimeout(() => {
-    el.classList.add('hide');
-    setTimeout(() => el.remove(), 320);
-  }, 3500);
+/* ── Navigation ──────────────────────────────────────────────────────────── */
+function switchNav(view, el) {
+  if (el) {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  document.querySelectorAll('.view-section').forEach(s => s.classList.add('hidden'));
+  document.getElementById(`view-${view}`).classList.remove('hidden');
+
+  const titleMap = {
+    'hospitals': 'Hospitals',
+    'doctors': 'Doctors',
+    'appointments': 'My Appointments',
+    'history': 'Medical History'
+  };
+  document.getElementById('breadcrumb').innerHTML = `Patient <span>/ ${titleMap[view]}</span>`;
+
+  if (view === 'hospitals') loadHospitals();
+  if (view === 'appointments') loadAppointments();
+  if (view === 'history') loadHistory();
 }
 
-/* ── Alert in panel ──────────────────────────────────────────────────────── */
-function showPanelAlert(containerId, msg, type = 'error') {
-  const icon = type === 'error' ? '❌' : '✅';
-  document.getElementById(containerId).innerHTML =
-    `<div class="alert alert-${type}">${icon} ${msg}</div>`;
-  setTimeout(() => { document.getElementById(containerId).innerHTML = ''; }, 4000);
-}
-
-/* ── Tab switching ───────────────────────────────────────────────────────── */
-const TABS = ['book', 'appts', 'history'];
-function switchTab(name) {
-  TABS.forEach(t => {
-    document.getElementById(`tab-${t}`).classList.toggle('active',   t === name);
-    document.getElementById(`panel-${t}`).classList.toggle('active', t === name);
-  });
-  if (name === 'appts')   loadAppointments();
-  if (name === 'history') loadHistory();
-}
-
-/* ── Decode JWT name ─────────────────────────────────────────────────────── */
-function getUserNameFromToken() {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return payload.name ?? null;
-  } catch { return null; }
-}
-
-/* ── Set header user info ────────────────────────────────────────────────── */
-async function initUserInfo() {
-  /* Try to get name from a /me endpoint – fall back to token or stored value */
-  let name = localStorage.getItem('user_name') ?? getUserNameFromToken() ?? 'Patient';
-
-  /* Try fetching actual name from the history endpoint (doctor name will differ – skip) */
-  document.getElementById('header-avatar').textContent  = name.charAt(0).toUpperCase();
-  document.getElementById('header-name').textContent    = name;
-  document.getElementById('profile-avatar').textContent = name.charAt(0).toUpperCase();
-  document.getElementById('profile-name').textContent   = `Welcome back, ${name}!`;
-}
-
-/* ── Logout ──────────────────────────────────────────────────────────────── */
 function logout() {
   localStorage.clear();
-  showToast('Logged out. See you soon!', 'info');
-  setTimeout(() => window.location.href = 'index.html', 600);
+  window.location.href = 'index.html';
 }
 
-/* ── LOAD DOCTORS (for dropdown) ─────────────────────────────────────────── */
-async function loadDoctors() {
-  const sel = document.getElementById('doctor-select');
+/* ── Toast Notifications ─────────────────────────────────────────────────── */
+function showToast(msg, type = 'success') {
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.textContent = msg;
+  const container = document.getElementById('toast-container');
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    setTimeout(() => el.remove(), 300);
+  }, 3000);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+/* ── Modals ──────────────────────────────────────────────────────────────── */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { 
+  document.getElementById(id).classList.remove('open');
+  if(id === 'book-modal') document.getElementById('book-form').reset();
+}
+
+/* ── HOSPITALS ───────────────────────────────────────────────────────────── */
+async function loadHospitals() {
+  const container = document.getElementById('hospitals-grid');
+  container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">Loading hospitals...</div>';
+  
   try {
-    const res  = await fetch(`${API}/doctor/list`);
+    const res = await fetch(`${API}/patient/hospitals`, { headers: authHeaders() });
+    if (!res.ok) throw new Error();
     const data = await res.json();
 
-    if (!Array.isArray(data) || data.length === 0) {
-      sel.innerHTML = '<option value="">No doctors available</option>';
+    if (data.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">No hospitals available at the moment.</div>';
       return;
     }
-    sel.innerHTML = '<option value="">— Choose a doctor —</option>' +
-      data.map(doctor =>
-        `<option value="${doctor.id}">${doctor.name} — ${doctor.specialization} (${doctor.hospital_name})</option>`
-      ).join('');
-  } catch {
-    sel.innerHTML = '<option value="">Failed to load doctors</option>';
+
+    container.innerHTML = data.map(h => `
+      <div class="card hospital-card card-hover" style="cursor: pointer;" onclick="viewDoctors(${h.id}, '${escHtml(h.name)}')">
+        <div class="hospital-card-header">
+          <div>
+            <h3>${escHtml(h.name)}</h3>
+            <p>📍 ${escHtml(h.location || 'Location not set')}</p>
+          </div>
+        </div>
+        <div class="meta">👨‍⚕️ ${h.doctor_count} Doctor${h.doctor_count !== 1 ? 's' : ''}</div>
+        <div class="hospital-card-actions" style="justify-content: flex-end;">
+          <span style="color: var(--accent-primary); font-size: 0.9rem; font-weight: 500;">View Doctors &rarr;</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">Error loading hospitals.</div>';
+  }
+}
+
+/* ── DOCTORS ─────────────────────────────────────────────────────────────── */
+async function viewDoctors(hospitalId, hospitalName) {
+  switchNav('doctors');
+  document.getElementById('hospital-doctors-title').textContent = `${hospitalName} — Doctors`;
+  const container = document.getElementById('doctors-grid');
+  container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">Loading doctors...</div>';
+
+  try {
+    const res = await fetch(`${API}/doctor/list?hospital_id=${hospitalId}`);
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+
+    if (data.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">No active doctors currently available at this hospital.</div>';
+      return;
+    }
+
+    container.innerHTML = data.map(d => `
+      <div class="card doctor-card card-hover">
+        <div class="doctor-avatar">👨‍⚕️</div>
+        <div>
+          <h3 style="font-size: 1.1rem;">Dr. ${escHtml(d.name)}</h3>
+          <span class="badge badge-booked mt-4" style="margin-bottom: 8px;">${escHtml(d.specialization)}</span>
+          <p style="font-size: 0.85rem; color: var(--text-secondary);">${escHtml(d.hospital_name)}</p>
+        </div>
+        <div class="hospital-card-actions mt-4">
+          <button class="btn btn-primary btn-full" onclick="openBookModal(${d.id}, '${escHtml(d.name)}', '${escHtml(d.specialization)}')">Book Appointment</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">Error loading doctors.</div>';
   }
 }
 
 /* ── BOOK APPOINTMENT ────────────────────────────────────────────────────── */
-async function bookAppointment(e) {
+function openBookModal(doctorId, doctorName, doctorSpec) {
+  document.getElementById('b-doctor-id').value = doctorId;
+  document.getElementById('b-doctor-name').textContent = `Dr. ${doctorName}`;
+  document.getElementById('b-doctor-spec').textContent = doctorSpec;
+  
+  // Set min date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('b-date').min = today;
+  document.getElementById('b-date').value = '';
+  
+  openModal('book-modal');
+}
+
+async function handleBookSubmit(e) {
   e.preventDefault();
-  const doctorId = document.getElementById('doctor-select').value;
-  const date     = document.getElementById('appt-date').value;
-
-  if (!doctorId || !date) {
-    showPanelAlert('book-alert', 'Please select a doctor and date.');
-    return;
-  }
-
-  /* Prevent booking in the past */
-  if (new Date(date) < new Date(new Date().toDateString())) {
-    showPanelAlert('book-alert', 'Please select a future date.');
-    return;
-  }
-
+  const doctor_id = document.getElementById('b-doctor-id').value;
+  const appointment_date = document.getElementById('b-date').value;
   const btn = document.getElementById('book-btn');
+  
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Booking…';
+  btn.textContent = 'Booking...';
 
   try {
-    const params = new URLSearchParams({ doctor_id: doctorId, appointment_date: date });
+    const params = new URLSearchParams({ doctor_id, appointment_date });
     const res = await fetch(`${API}/patient/book?${params}`, {
       method: 'POST',
       headers: authHeaders()
     });
+    
     const data = await res.json();
-
-    if (!res.ok) {
-      showPanelAlert('book-alert', data.detail || 'Booking failed.');
-    } else {
-      showToast('Appointment booked successfully! 🎉', 'success');
-      document.getElementById('book-form').reset();
-      await loadDoctors(); // refresh select
-    }
-  } catch {
-    showPanelAlert('book-alert', 'Cannot reach server.');
+    if (!res.ok) throw new Error(data.detail || 'Failed to book');
+    
+    showToast('Appointment booked successfully!', 'success');
+    closeModal('book-modal');
+    switchNav('appointments', document.querySelectorAll('.nav-item')[1]);
+  } catch (err) {
+    showToast(err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '📅 Confirm Booking';
+    btn.textContent = 'Confirm Booking';
   }
 }
 
-/* ── LOAD APPOINTMENTS ───────────────────────────────────────────────────── */
+/* ── APPOINTMENTS ────────────────────────────────────────────────────────── */
 async function loadAppointments() {
-  const container = document.getElementById('appts-content');
-  container.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
-
+  const tbody = document.getElementById('appointments-table-body');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center">Loading...</td></tr>';
+  
   try {
-    const res  = await fetch(`${API}/patient/appointments`, { headers: authHeaders() });
+    const res = await fetch(`${API}/patient/appointments`, { headers: authHeaders() });
+    if (!res.ok) throw new Error();
     const data = await res.json();
 
-    if (!res.ok) {
-      container.innerHTML = `<div class="alert alert-error">❌ ${data.detail || 'Failed to load.'}</div>`;
+    if (data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center empty-state">No appointments found.</td></tr>';
       return;
     }
 
-    if (!Array.isArray(data) || data.length === 0) {
-      container.innerHTML = `<div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <p>No appointments yet. Book one in the first tab!</p>
-      </div>`;
-      return;
-    }
-
-    container.innerHTML = `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Doctor</th>
-              <th>Specialization</th>
-              <th>Hospital</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${data.map((a, i) => `
-              <tr id="row-${a.id}">
-                <td>${i + 1}</td>
-                <td>${escHtml(a.doctor_name)}</td>
-                <td>${escHtml(a.specialization)}</td>
-                <td>${escHtml(a.hospital_name)}</td>
-                <td>${formatDate(a.appointment_date)}</td>
-                <td>${statusBadge(a.status)}</td>
-                <td>
-                  ${a.status === 'booked'
-                    ? `<button class="btn btn-danger btn-sm" onclick="cancelAppointment(${a.id})">✕ Cancel</button>`
-                    : '<span style="color:var(--text-muted);font-size:0.8rem">—</span>'}
-                </td>
-              </tr>`).join('')}
-          </tbody>
-        </table>
-      </div>`;
-  } catch {
-    container.innerHTML = `<div class="alert alert-error">❌ Cannot reach server.</div>`;
+    tbody.innerHTML = data.map(a => `
+      <tr>
+        <td style="font-weight: 500;">${escHtml(a.appointment_date)}</td>
+        <td>Dr. ${escHtml(a.doctor_name)}</td>
+        <td style="color: var(--text-secondary);">${escHtml(a.specialization)}</td>
+        <td style="color: var(--text-secondary);">${escHtml(a.hospital_name)}</td>
+        <td>
+          <span class="badge badge-${a.status}">${a.status.charAt(0).toUpperCase() + a.status.slice(1)}</span>
+        </td>
+        <td style="text-align: right;">
+          ${a.status !== 'completed' && a.status !== 'cancelled' 
+            ? `<button class="btn btn-danger btn-sm" onclick="cancelAppointment(${a.id})">Cancel</button>` 
+            : '<span style="color: var(--text-muted); font-size: 0.85rem;">—</span>'}
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center empty-state">Error loading appointments.</td></tr>';
   }
 }
 
-/* ── CANCEL APPOINTMENT ──────────────────────────────────────────────────── */
 async function cancelAppointment(id) {
-  if (!confirm('Cancel this appointment?')) return;
-
+  if (!confirm('Are you sure you want to cancel this appointment?')) return;
   try {
-    const res  = await fetch(`${API}/patient/cancel/${id}`, {
+    const res = await fetch(`${API}/patient/cancel/${id}`, {
       method: 'DELETE',
       headers: authHeaders()
     });
-    const data = await res.json();
-
-    if (!res.ok) {
-      showToast(data.detail || 'Could not cancel.', 'error');
-    } else {
-      showToast('Appointment cancelled.', 'info');
-      loadAppointments();
-    }
-  } catch {
-    showToast('Cannot reach server.', 'error');
+    if (!res.ok) throw new Error('Failed to cancel');
+    showToast('Appointment cancelled', 'info');
+    loadAppointments();
+  } catch (err) {
+    showToast(err.message, 'error');
   }
 }
 
-/* ── LOAD MEDICAL HISTORY ────────────────────────────────────────────────── */
+/* ── MEDICAL HISTORY ─────────────────────────────────────────────────────── */
 async function loadHistory() {
-  const container = document.getElementById('history-content');
-  container.innerHTML = '<div class="empty-state"><div class="empty-icon">⏳</div><p>Loading…</p></div>';
-
+  const container = document.getElementById('history-list');
+  container.innerHTML = '<div class="empty-state">Loading records...</div>';
+  
   try {
-    const res  = await fetch(`${API}/patient/history`, { headers: authHeaders() });
+    const res = await fetch(`${API}/patient/history`, { headers: authHeaders() });
+    if (!res.ok) throw new Error();
     const data = await res.json();
 
-    if (!res.ok) {
-      container.innerHTML = `<div class="alert alert-error">❌ ${data.detail || 'Failed to load.'}</div>`;
-      return;
-    }
-
-    if (!Array.isArray(data) || data.length === 0) {
-      container.innerHTML = `<div class="empty-state">
-        <div class="empty-icon">📭</div>
-        <p>No medical records yet.</p>
-      </div>`;
+    if (data.length === 0) {
+      container.innerHTML = '<div class="empty-state">No medical records found.</div>';
       return;
     }
 
     container.innerHTML = data.map(r => `
-      <div class="record-card">
-        <div class="record-header">
-          <span class="record-doctor">👨‍⚕️ Dr. ${escHtml(r.doctor_name)}</span>
-          ${r.next_visit_date
-            ? `<span style="font-size:0.82rem;color:var(--warning)">
-                🗓 Next visit: ${formatDate(r.next_visit_date)}
-               </span>`
-            : ''}
+      <div class="card" style="margin-bottom: 16px;">
+        <div class="flex-between mb-4" style="border-bottom: 1px solid var(--border); padding-bottom: 12px;">
+          <h3 style="font-size: 1.1rem; color: var(--accent-primary);">Dr. ${escHtml(r.doctor_name)}</h3>
+          <span class="badge badge-active">Next Visit: ${escHtml(r.next_visit_date || 'N/A')}</span>
         </div>
-        <div class="record-grid">
-          <div class="record-field">
-            <div class="record-field-label">Diagnosis</div>
-            <div class="record-field-value">${escHtml(r.diagnosis)}</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Diagnosis</div>
+            <div style="font-size: 0.95rem;">${escHtml(r.diagnosis)}</div>
           </div>
-          <div class="record-field">
-            <div class="record-field-label">Medicines</div>
-            <div class="record-field-value">${escHtml(r.medicines)}</div>
+          <div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-bottom: 4px;">Medicines</div>
+            <div style="font-size: 0.95rem;">${escHtml(r.medicines)}</div>
           </div>
         </div>
-      </div>`).join('');
-  } catch {
-    container.innerHTML = `<div class="alert alert-error">❌ Cannot reach server.</div>`;
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = '<div class="empty-state">Error loading history.</div>';
   }
-}
-
-/* ── Helpers ─────────────────────────────────────────────────────────────── */
-function statusBadge(status) {
-  const map = {
-    booked:    '<span class="badge badge-booked">🔵 Booked</span>',
-    completed: '<span class="badge badge-completed">✅ Completed</span>',
-    cancelled: '<span class="badge badge-cancelled">✕ Cancelled</span>',
-  };
-  return map[status] ?? `<span class="badge">${status}</span>`;
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
-  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function escHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str ?? '';
-  return div.innerHTML;
-}
-
-/* ── Min date for appointment picker ─────────────────────────────────────── */
-function setMinDate() {
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('appt-date').min = today;
 }
 
 /* ── Init ────────────────────────────────────────────────────────────────── */
 (async function init() {
-  setMinDate();
-  await initUserInfo();
-  await loadDoctors();
+  try {
+    const res = await fetch(`${API}/patient/profile`, { headers: authHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      document.getElementById('header-name').textContent = data.name;
+      localStorage.setItem('name', data.name); // update local storage cache
+    }
+  } catch (err) {
+    console.error('Failed to load patient profile', err);
+  }
+  await loadHospitals();
 })();

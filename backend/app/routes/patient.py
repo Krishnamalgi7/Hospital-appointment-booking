@@ -6,6 +6,37 @@ from sqlalchemy import text
 
 router = APIRouter()
 
+# ─── GET /patient/profile ─────────────────────────────────────────────────────
+@router.get("/profile")
+def get_profile(
+    db: Session = Depends(get_db),
+    user=Depends(require_role("patient"))
+):
+    query = """
+        SELECT u.name, p.age, p.gender, p.phone
+        FROM patients p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.user_id = :user_id
+    """
+    result = db.execute(text(query), {"user_id": user["user_id"]}).fetchone()
+    if not result:
+        raise HTTPException(status_code=404, detail="Patient profile not found")
+    return dict(result._mapping)
+
+
+# ─── NEW: Public list of hospitals (for patient booking flow) ────────────────
+@router.get("/hospitals")
+def list_hospitals(db: Session = Depends(get_db), user=Depends(require_role("patient"))):
+    result = db.execute(text("""
+        SELECT h.id, h.name, h.location,
+               COUNT(d.id) AS doctor_count
+        FROM hospitals h
+        LEFT JOIN doctors d ON d.hospital_id = h.id AND d.status = 'active'
+        GROUP BY h.id, h.name, h.location
+        ORDER BY h.name
+    """)).fetchall()
+    return [dict(row._mapping) for row in result]
+
 
 # ─── EXISTING: Book appointment ───────────────────────────────────────────────
 @router.post("/book")

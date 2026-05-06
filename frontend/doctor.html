@@ -3,211 +3,152 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Doctor Dashboard — MediCare Portal</title>
-  <meta name="description" content="Doctor dashboard for viewing appointments and adding medical records." />
+  <title>Doctor Dashboard — MediCare OS</title>
   <link rel="stylesheet" href="css/styles.css" />
-  <style>
-    .section-card { padding: 28px 28px 32px; }
-
-    /* Doctor profile */
-    .doctor-profile-strip {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      padding: 22px 26px;
-      background: linear-gradient(135deg, rgba(14,165,233,0.1), rgba(6,182,212,0.06));
-      border: 1px solid rgba(14,165,233,0.2);
-      border-radius: var(--radius-lg);
-      margin-bottom: 32px;
-    }
-    .doc-avatar {
-      width: 60px; height: 60px;
-      background: var(--accent-grad);
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.8rem;
-      flex-shrink: 0;
-      box-shadow: 0 4px 20px rgba(14,165,233,0.4);
-    }
-    .doc-info h3 { font-size: 1.2rem; margin-bottom: 3px; }
-    .doc-info p  { font-size: 0.85rem; color: var(--text-secondary); }
-    .doc-spec-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(14,165,233,0.12);
-      border: 1px solid rgba(14,165,233,0.25);
-      border-radius: 20px;
-      padding: 3px 12px;
-      font-size: 0.8rem;
-      color: var(--accent-1);
-      font-weight: 600;
-      margin-top: 6px;
-    }
-
-    /* Add Record form grid */
-    .record-form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0 20px;
-    }
-    @media (max-width: 600px) { .record-form-grid { grid-template-columns: 1fr; } }
-    .record-form-grid .full { grid-column: 1 / -1; }
-
-    /* Status update inline */
-    .status-select {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      color: var(--text-primary);
-      font-family: 'Inter', sans-serif;
-      font-size: 0.82rem;
-      padding: 5px 8px;
-      cursor: pointer;
-      outline: none;
-      transition: border-color var(--transition);
-    }
-    .status-select:focus { border-color: var(--accent-1); }
-    .status-select option { background: var(--bg-secondary); }
-  </style>
 </head>
 <body>
-  <div class="bg-glow"></div>
+
   <div id="toast-container"></div>
 
-  <!-- ── Header ─────────────────────────────────────────────────────────── -->
-  <header class="dashboard-header">
-    <div class="header-brand">
-      <div class="brand-icon">🏥</div>
-      <span class="brand-name">MediCare Portal</span>
-    </div>
-    <div class="header-user">
-      <div class="user-pill">
-        <div class="user-avatar" id="header-avatar">D</div>
-        <div class="user-info-text">
-          <span class="user-name-text" id="header-name">Doctor</span>
-          <span class="user-role-text">Doctor</span>
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand-icon">🏥</div>
+        <div class="sidebar-brand-text">MediCare OS</div>
+      </div>
+      <div class="sidebar-nav">
+        <div class="nav-item active" onclick="switchNav('dashboard', this)">📊 Overview</div>
+        <div class="nav-item" onclick="switchNav('appointments', this)">🗓 Appointments</div>
+        <div class="nav-item" onclick="switchNav('records', this)">📝 Medical Records</div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="nav-item" onclick="logout()" style="color: var(--danger);">🚪 Sign Out</div>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <header class="top-header">
+        <div class="breadcrumb" id="breadcrumb">Doctor <span>/ Overview</span></div>
+        <div class="user-menu">
+          <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);" id="header-name">Doctor</span>
+          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;">D</div>
         </div>
-      </div>
-      <button class="btn btn-secondary btn-sm" onclick="logout()" id="logout-btn">
-        🚪 Logout
-      </button>
-    </div>
-  </header>
+      </header>
 
-  <!-- ── Main ───────────────────────────────────────────────────────────── -->
-  <main class="dashboard-container">
+      <div class="page-content">
 
-    <!-- Doctor profile strip -->
-    <div class="doctor-profile-strip" id="doc-profile">
-      <div class="doc-avatar">👨‍⚕️</div>
-      <div class="doc-info">
-        <h3 id="doc-name">Loading…</h3>
-        <p id="doc-hospital">—</p>
-        <div class="doc-spec-badge" id="doc-spec">—</div>
-      </div>
-    </div>
-
-    <!-- Stats row -->
-    <div class="stats-grid" id="stats-grid">
-      <div class="stat-card total">
-        <div class="stat-icon">📊</div>
-        <div class="stat-num" id="stat-total">—</div>
-        <div class="stat-label">Total Appointments</div>
-      </div>
-      <div class="stat-card pending">
-        <div class="stat-icon">⏳</div>
-        <div class="stat-num" id="stat-pending">—</div>
-        <div class="stat-label">Pending</div>
-      </div>
-      <div class="stat-card done">
-        <div class="stat-icon">✅</div>
-        <div class="stat-num" id="stat-completed">—</div>
-        <div class="stat-label">Completed</div>
-      </div>
-      <div class="stat-card cancel">
-        <div class="stat-icon">✕</div>
-        <div class="stat-num" id="stat-cancelled">—</div>
-        <div class="stat-label">Cancelled</div>
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" id="tab-appointments"  onclick="switchTab('appointments')">🗓 Appointments</button>
-      <button class="tab-btn"        id="tab-add-record"    onclick="switchTab('add-record')">📝 Add Medical Record</button>
-    </div>
-
-    <!-- ── TAB: Appointments ──────────────────────────────────────────────── -->
-    <div class="tab-panel active" id="panel-appointments">
-      <div class="glass-card section-card">
-        <div class="dashboard-title">
-          <h2>🗓 Patient Appointments</h2>
-          <p>All appointments assigned to you. Update status inline.</p>
-        </div>
-        <div id="appts-alert"></div>
-        <div id="appts-content">
-          <div class="empty-state">
-            <div class="empty-icon">⏳</div>
-            <p>Loading appointments…</p>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── TAB: Add Medical Record ────────────────────────────────────────── -->
-    <div class="tab-panel" id="panel-add-record">
-      <div class="glass-card section-card">
-        <div class="dashboard-title">
-          <h2>📝 Add Medical Record</h2>
-          <p>Record diagnosis, medicines, and next visit date for a patient.</p>
-        </div>
-
-        <div id="record-alert"></div>
-
-        <form id="record-form" onsubmit="submitRecord(event)">
-          <div class="record-form-grid">
-            <div class="form-group">
-              <label for="rec-patient-id">Patient ID</label>
-              <input type="number" id="rec-patient-id" placeholder="e.g. 3" required min="1" />
+        <!-- Doctor profile strip -->
+        <div class="card mb-6" style="display: flex; align-items: center; justify-content: space-between; padding: 28px 32px; background: linear-gradient(135deg, var(--bg-card) 0%, rgba(6,182,212,0.05) 100%);">
+          <div style="display: flex; align-items: center; gap: 24px;">
+            <div style="position: relative;">
+              <div style="width: 72px; height: 72px; background: var(--bg-primary); border: 2px solid var(--accent-primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; box-shadow: 0 8px 16px rgba(6,182,212,0.15);">👨‍⚕️</div>
+              <div style="position: absolute; bottom: 2px; right: 2px; width: 14px; height: 14px; background: var(--success); border: 2px solid var(--bg-card); border-radius: 50%;"></div>
             </div>
-            <div class="form-group">
-              <label for="rec-next-visit">Next Visit Date</label>
-              <input type="date" id="rec-next-visit" required />
-            </div>
-            <div class="form-group full">
-              <label for="rec-diagnosis">Diagnosis</label>
-              <textarea id="rec-diagnosis" placeholder="Describe the diagnosis…" required></textarea>
-            </div>
-            <div class="form-group full">
-              <label for="rec-medicines">Prescribed Medicines</label>
-              <textarea id="rec-medicines" placeholder="List medicines, dosage, frequency…" required></textarea>
+            <div>
+              <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                <h3 id="doc-name" style="font-size: 1.4rem; font-weight: 700; margin: 0;">Loading...</h3>
+                <span class="badge" style="background: rgba(16,185,129,0.1); color: var(--success); font-weight: 600; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem;">Online</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 12px;">
+                <span class="badge badge-booked" id="doc-spec" style="font-size: 0.85rem;">Specialization</span>
+                <span style="color: var(--border);">|</span>
+                <span style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 500;" id="doc-hospital">Hospital Name</span>
+              </div>
             </div>
           </div>
-          <button type="submit" class="btn btn-primary" id="record-btn">
-            💾 Save Record
-          </button>
-        </form>
-      </div>
-    </div>
+        </div>
+        
+        <!-- ── DASHBOARD VIEW ───────────────────────────────────────── -->
+        <section id="view-dashboard" class="view-section">
+          <div class="flex-between mb-6">
+            <h2>Activity Overview</h2>
+          </div>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Total Appointments</div>
+              <div class="stat-val" id="stat-total">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label" style="color: var(--warning);">Pending</div>
+              <div class="stat-val" id="stat-pending">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label" style="color: var(--success);">Completed</div>
+              <div class="stat-val" id="stat-completed">—</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label" style="color: var(--danger);">Cancelled</div>
+              <div class="stat-val" id="stat-cancelled">—</div>
+            </div>
+          </div>
+        </section>
 
-  </main>
+        <!-- ── APPOINTMENTS VIEW ────────────────────────────────────── -->
+        <section id="view-appointments" class="view-section hidden">
+          <div class="flex-between mb-6">
+            <div>
+              <h2>Patient Appointments</h2>
+              <p class="text-muted" style="margin-top: 4px; font-size: 0.95rem;">Manage your schedule and update statuses.</p>
+            </div>
+          </div>
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Patient Name</th>
+                  <th>Patient ID</th>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th style="text-align: right;">Update Status</th>
+                  <th style="text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="appointments-table-body">
+                <tr><td colspan="6" class="text-center">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-  <!-- ── Add Record Quick-fill Modal (from appointment row) ──────────────── -->
-  <div class="modal-overlay" id="quickfill-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <span class="modal-title">Quick-fill Patient ID</span>
-        <button class="modal-close" onclick="closeModal()">✕</button>
+        <!-- ── ADD MEDICAL RECORD VIEW ──────────────────────────────── -->
+        <section id="view-records" class="view-section hidden">
+          <div class="flex-between mb-6">
+            <div>
+              <h2>Add Medical Record</h2>
+              <p class="text-muted" style="margin-top: 4px; font-size: 0.95rem;">Create a diagnosis and prescription record for a patient.</p>
+            </div>
+          </div>
+          
+          <div class="card" style="max-width: 800px;">
+            <form id="record-form" onsubmit="submitRecord(event)">
+              <div class="form-group">
+                <label>Patient ID</label>
+                <input type="number" id="rec-patient-id" required min="1" />
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Use the 'Add Record' button from the Appointments tab to auto-fill this.</div>
+              </div>
+              <div class="form-group">
+                <label>Next Visit Date</label>
+                <input type="date" id="rec-next-visit" required />
+              </div>
+              <div class="form-floating">
+                <textarea id="rec-diagnosis" placeholder=" " required></textarea>
+                <label>Diagnosis</label>
+              </div>
+              <div class="form-floating">
+                <textarea id="rec-medicines" placeholder=" " required></textarea>
+                <label>Prescribed Medicines (Dosage/Frequency)</label>
+              </div>
+              <div class="mt-6">
+                <button type="submit" class="btn btn-primary" id="record-btn">Save Medical Record</button>
+              </div>
+            </form>
+          </div>
+        </section>
+
       </div>
-      <p style="color:var(--text-secondary);margin-bottom:20px;font-size:0.9rem">
-        Patient <strong id="modal-patient-name"></strong> — ID <strong id="modal-patient-id-display"></strong> has been copied to the form.
-      </p>
-      <div style="display:flex;gap:12px">
-        <button class="btn btn-primary" onclick="goToRecord()">Go to Add Record →</button>
-        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
-      </div>
-    </div>
+    </main>
   </div>
 
   <script src="js/doctor.js"></script>

@@ -54,10 +54,17 @@ def login(email: str, password: str, db: Session = Depends(get_db)):
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
+    # Prevent inactive doctors from logging in
+    if user.role == "doctor":
+        doctor = db.execute(text("SELECT status FROM doctors WHERE user_id=:user_id"), {"user_id": user.id}).fetchone()
+        if doctor and getattr(doctor, 'status', 'active') == 'inactive':
+            raise HTTPException(status_code=403, detail="Account is deactivated")
+
     token = create_access_token({"user_id": user.id, "role": user.role})
 
     return {
         "access_token": token,
         "token_type": "bearer",
-        "role": user.role
+        "role": user.role,
+        "name": user.name
     }

@@ -97,6 +97,7 @@ async function handleLogin(e) {
     /* Store auth data */
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('role',  data.role);
+    localStorage.setItem('name',  data.name);
 
     /* Decode JWT to get user_id */
     try {

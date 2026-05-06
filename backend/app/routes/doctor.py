@@ -6,6 +6,25 @@ from sqlalchemy import text
 
 router = APIRouter()
 
+# ─── GET /doctor/profile ──────────────────────────────────────────────────────
+@router.get("/profile")
+def get_profile(
+    db: Session = Depends(get_db),
+    user=Depends(require_role("doctor"))
+):
+    query = """
+        SELECT u.name, d.specialization, 
+               COALESCE(h.name, d.hospital_name) as hospital_name
+        FROM doctors d
+        JOIN users u ON d.user_id = u.id
+        LEFT JOIN hospitals h ON d.hospital_id = h.id
+        WHERE d.user_id = :user_id
+    """
+    result = db.execute(text(query), {"user_id": user["user_id"]}).fetchone()
+    if not result:
+        raise HTTPException(status_code=404, detail="Doctor profile not found")
+    return dict(result._mapping)
+
 
 # ─── EXISTING: Doctor view appointments ───────────────────────────────────────
 @router.get("/appointments")
@@ -62,13 +81,21 @@ def add_medical_record(
 
 # ─── EXISTING: Public list of all doctors (booking dropdown) ──────────────────
 @router.get("/list")
-def list_doctors(db: Session = Depends(get_db)):
-    result = db.execute(text("""
-        SELECT d.id, u.name, d.specialization, d.hospital_name, d.phone
+def list_doctors(hospital_id: int = None, db: Session = Depends(get_db)):
+    query = """
+        SELECT d.id, u.name, d.specialization, d.hospital_name, d.phone, d.status
         FROM doctors d
         JOIN users u ON d.user_id = u.id
-        ORDER BY u.name
-    """)).fetchall()
+        WHERE d.status = 'active'
+    """
+    params = {}
+    if hospital_id:
+        query += " AND d.hospital_id = :hospital_id"
+        params["hospital_id"] = hospital_id
+        
+    query += " ORDER BY u.name"
+    
+    result = db.execute(text(query), params).fetchall()
     return [dict(row._mapping) for row in result]
 
 
