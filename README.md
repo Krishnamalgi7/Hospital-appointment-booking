@@ -228,7 +228,35 @@ CREATE TABLE medical_records (
     FOREIGN KEY (doctor_id) REFERENCES doctors(id)
 );
 ```
-## Insert Admin User
+# 👨‍💼 Create Admin Account
+
+For security reasons, no default password is exposed publicly.
+
+We provide a secure bootstrap script to easily create your admin account without touching the database directly.
+
+---
+
+## Run the Bootstrap Script
+
+Make sure your virtual environment is activated and you are in the `backend` directory.
+
+```bash
+python create_admin.py
+```
+## Follow the Interactive Prompts
+
+The script will prompt you securely:
+
+```text
+--- Hospitum Core: Admin Bootstrap ---
+Enter admin name: Admin User
+Enter admin email: [EMAIL_ADDRESS]
+Enter admin password: [PASSWORD]
+Confirm admin password: [PASSWORD]
+✅ Admin account created successfully.
+```
+
+## Insert Admin User (Manual Method)
 
 ```sql id="jlwm9e"
 INSERT INTO users (
@@ -442,22 +470,6 @@ Roles:
 
 ```text id="jlwm2b"
 Authorization: Bearer <token>
-```
-
----
-
-# 👨‍💼 Create Admin Account
-
-For security reasons, no default password is exposed publicly.
-
-Generate your own bcrypt password hash.
-
----
-
-## Open Python shell
-
-```bash id="jlwm1c"
-python
 ```
 
 ---
