@@ -1,0 +1,2 @@
+# To set any background image of your wish rename file to bg.png and replace it with the existing one.
+# And make sure the image is in the same size as the existing one to avoid any layout issues.
