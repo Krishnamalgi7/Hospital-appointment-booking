@@ -252,9 +252,7 @@ function renderDoctorsTable(doctors) {
 function openDoctorModal() {
   document.getElementById('d-id').value = '';
   document.getElementById('d-modal-title').textContent = 'Add Doctor';
-  document.getElementById('d-password-group').style.display = 'block';
   document.getElementById('d-email').disabled = false;
-  document.getElementById('d-password').required = true;
   document.getElementById('d-status-group').style.display = 'none';
   openModal('doctor-modal');
 }
@@ -269,10 +267,8 @@ function editDoctor(id) {
   document.getElementById('d-phone').value = d.phone || '';
   document.getElementById('d-hospital').value = d.hospital_id;
   
-  // Hide password required fields for editing
-  document.getElementById('d-password-group').style.display = 'none';
-  document.getElementById('d-password').required = false;
-  document.getElementById('d-email').disabled = true; // prevent email change
+  // Disable email change for editing
+  document.getElementById('d-email').disabled = true;
   
   // Show status toggle
   document.getElementById('d-status-group').style.display = 'block';
@@ -302,12 +298,16 @@ async function handleDoctorSubmit(e) {
     } else {
       // Create
       const email = document.getElementById('d-email').value;
-      const password = document.getElementById('d-password').value;
-      const params = new URLSearchParams({ name, email, password, specialization, hospital_id, phone });
+      const params = new URLSearchParams({ name, email, specialization, hospital_id, phone });
       const res = await fetch(`${API}/admin/create-doctor?${params}`, { method: 'POST', headers: authHeaders() });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Error creating doctor');
-      showToast('Doctor created', 'success');
+      
+      if (data.email_sent) {
+        showToast('✅ Doctor created successfully. 📧 Credential email sent.', 'success');
+      } else {
+        showToast('⚠️ Doctor created successfully, but email delivery failed. Please verify SMTP configuration.', 'error');
+      }
     }
     closeModal('doctor-modal');
     loadDoctors();

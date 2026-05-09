@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.utils.dependencies import require_role
 from app.utils.security import hash_password
+from app.utils.password import generate_temp_password
+from app.utils.email import send_doctor_credentials
 from sqlalchemy import text
 
 router = APIRouter()
@@ -54,7 +56,6 @@ def list_hospitals(
 def create_doctor(
     name: str,
     email: str,
-    password: str,
     specialization: str,
     hospital_id: int,
     phone: str = "",
@@ -77,7 +78,8 @@ def create_doctor(
     if not hospital:
         raise HTTPException(status_code=404, detail="Hospital not found")
 
-    hashed_pw = hash_password(password)
+    temp_password = generate_temp_password()
+    hashed_pw = hash_password(temp_password)
 
     # Insert into users with role=doctor
     user_result = db.execute(text("""
@@ -100,8 +102,13 @@ def create_doctor(
     })
 
     db.commit()
+    
+    # Try sending email
+    email_sent = send_doctor_credentials(email, name, temp_password, hospital.name)
+
     return {
         "message":    "Doctor created successfully",
+        "email_sent": email_sent,
         "user_id":    new_user_id,
         "email":      email,
         "hospital":   hospital.name
