@@ -228,7 +228,33 @@ CREATE TABLE medical_records (
     FOREIGN KEY (doctor_id) REFERENCES doctors(id)
 );
 ```
+## Insert Admin User
 
+```sql id="jlwm9e"
+INSERT INTO users (
+    name,
+    email,
+    password_hash,
+    role
+)
+VALUES (
+    'Hospital Admin',
+    'admin@hospital.com',
+    'PASTE_GENERATED_HASH_HERE',
+    'admin'
+);
+```
+## Generate password hash
+
+```python id="jlwm0d"
+from passlib.hash import bcrypt
+
+print(bcrypt.hash("your_admin_password"))
+```
+
+Copy the generated hash and paste in users column PASTE_GENERATED_HASH_HERE in the SQL query.
+
+---
 ---
 
 # 🔗 Database Relationships
@@ -432,37 +458,6 @@ Generate your own bcrypt password hash.
 
 ```bash id="jlwm1c"
 python
-```
-
----
-
-## Generate password hash
-
-```python id="jlwm0d"
-from passlib.hash import bcrypt
-
-print(bcrypt.hash("your_admin_password"))
-```
-
-Copy the generated hash.
-
----
-
-## Insert Admin User
-
-```sql id="jlwm9e"
-INSERT INTO users (
-    name,
-    email,
-    password_hash,
-    role
-)
-VALUES (
-    'Hospital Admin',
-    'admin@hospital.com',
-    'PASTE_GENERATED_HASH_HERE',
-    'admin'
-);
 ```
 
 ---
