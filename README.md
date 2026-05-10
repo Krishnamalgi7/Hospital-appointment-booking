@@ -20,12 +20,14 @@ The platform delivers a premium SaaS experience for three roles:
 
 | Feature | Description |
 |---|---|
+| Patient Registration | Collects Full Name, Email, Age, Gender, Phone, Password at sign-up |
 | Hospital Browser | Premium card/grid layout to browse registered hospitals |
 | Doctor Listing | View active doctors by hospital with specialty badges |
 | Smart Slot Booking | Date picker triggers dynamic slot grid — select a time, click confirm |
 | Slot Grid UI | Clickable slot cards with hover, selected, and disabled states |
 | Appointment History | View booked appointments with date, time (12-hr), doctor, hospital, and status |
 | Medical History | View all past diagnoses, prescriptions, and next visit dates from doctors |
+| My Profile | Dedicated profile view showing name, email, age, gender, phone with avatar card |
 | Cancel Appointment | Patients can cancel their own booked appointments |
 | Real-time Toasts | Success/error notifications for all booking actions |
 
@@ -36,12 +38,12 @@ The platform delivers a premium SaaS experience for three roles:
 | Feature | Description |
 |---|---|
 | Appointment Analytics | Overview cards: Total, Pending, Completed, Cancelled |
-| Appointment Table | Patient name, date, time (12-hr), status displayed together |
+| Appointment Table | Patient name (with age & gender sub-label), date, time (12-hr), status |
 | Smart Status Column | Only "booked" appointments show "Add Record" — cancelled/completed show label |
 | Medical Record Form | Write diagnosis and prescription with optional next visit date |
 | Auto-Complete | Saving a medical record **automatically marks the appointment as Completed** |
 | Download Report | After saving, a **⬇ Download Report** button generates a professional print-ready prescription PDF |
-| Prescription PDF | Includes: hospital, doctor, specialization, diagnosis, medicines, next visit, signature block, and Hospitum Core branding |
+| Prescription PDF | Includes: hospital, doctor, specialization, patient demographics, diagnosis, medicines, next visit, signature block |
 
 ---
 
@@ -187,12 +189,14 @@ CREATE TABLE patients (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     age INT NULL,
-    gender VARCHAR(10) NULL,
+    gender ENUM('male', 'female', 'other') NULL,
     phone VARCHAR(15) NULL,
 
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 ```
+
+> **Note:** `gender` uses `ENUM('male', 'female', 'other')` — validated at both backend and frontend.
 
 ---
 
@@ -416,7 +420,7 @@ Or use **VS Code Live Server** extension.
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/auth/register` | Register new patient |
+| POST | `/auth/register` | Register patient — params: `name`, `email`, `password`, `age`, `gender`, `phone` |
 | POST | `/auth/login` | Login and receive JWT |
 
 ---
@@ -425,12 +429,12 @@ Or use **VS Code Live Server** extension.
 
 | Method | Endpoint | Description |
 |---|---|---|
-| GET | `/patient/profile` | Get patient profile |
+| GET | `/patient/profile` | Get patient profile — returns name, email, age, gender, phone |
 | GET | `/patient/hospitals` | List all hospitals |
 | GET | `/patient/available-slots` | Get available slots for doctor + date |
 | POST | `/patient/book` | Book an appointment with date + time |
 | GET | `/patient/appointments` | List patient's appointments |
-| GET | `/patient/history` | View medical history |
+| GET | `/patient/history` | View medical history with appointment date/time |
 | DELETE | `/patient/cancel/{id}` | Cancel an appointment |
 
 ---
@@ -440,9 +444,9 @@ Or use **VS Code Live Server** extension.
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/doctor/profile` | Get doctor profile |
-| GET | `/doctor/appointments` | List all appointments with patient info |
+| GET | `/doctor/appointments` | List all appointments with patient info (name, age, gender) |
 | PUT | `/doctor/update-status` | Update appointment status |
-| POST | `/doctor/add-record` | Save medical record + auto-complete appointment |
+| POST | `/doctor/add-record` | Save medical record + auto-complete appointment — params: `patient_id`, `diagnosis`, `medicines`, `appointment_id`, `next_visit_date` (optional) |
 | GET | `/doctor/stats` | Get appointment statistics |
 | GET | `/doctor/list` | Public list of doctors (for patient booking) |
 
@@ -567,10 +571,14 @@ SELECT id, name, email, role FROM users ORDER BY role;
 - [x] Medical History with appointment date/time
 - [x] 12-hr time formatting across all dashboards
 - [x] Clean date display (stripped ISO timestamps)
+- [x] **Patient Profile System** — registration collects age, gender, phone
+- [x] **My Profile page** in patient dashboard (name, email, age, gender, phone card)
+- [x] Patient demographics (age & gender) visible in doctor appointment table
+- [x] Dark-theme styled Gender dropdown on registration form
 
 ## 🔮 Future Enhancements
 
-- [ ] Patient profile edit (age, gender, phone)
+- [ ] Patient profile edit (update age, phone, gender after registration)
 - [ ] Video consultations
 - [ ] AI symptom analysis
 - [ ] Payment gateway integration

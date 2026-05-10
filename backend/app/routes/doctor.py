@@ -35,7 +35,8 @@ def get_appointments(
 ):
     result = db.execute(text("""
     SELECT a.id, a.appointment_date, a.appointment_time, a.status,
-           p.id as patient_id, u.name as patient_name
+           p.id as patient_id, u.name as patient_name,
+           p.age as patient_age, p.gender as patient_gender
     FROM appointments a
     JOIN patients p ON a.patient_id = p.id
     JOIN users u ON p.user_id = u.id

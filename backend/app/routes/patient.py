@@ -15,7 +15,7 @@ def get_profile(
     user=Depends(require_role("patient"))
 ):
     query = """
-        SELECT u.name, p.age, p.gender, p.phone
+        SELECT u.name, u.email, p.age, p.gender, p.phone
         FROM patients p
         JOIN users u ON p.user_id = u.id
         WHERE p.user_id = :user_id

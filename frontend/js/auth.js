@@ -124,11 +124,23 @@ async function handleRegister(e) {
 
   const name     = document.getElementById('reg-name').value.trim();
   const email    = document.getElementById('reg-email').value.trim();
+  const age      = parseInt(document.getElementById('reg-age').value, 10);
+  const gender   = document.getElementById('reg-gender').value;
+  const phone    = document.getElementById('reg-phone').value.trim();
   const password = document.getElementById('reg-password').value;
   const confirm  = document.getElementById('reg-confirm').value;
 
-  if (!name || !email || !password || !confirm) {
+  // Validation
+  if (!name || !email || !gender || !phone || !password || !confirm) {
     showAlert('Please fill in all fields.');
+    return;
+  }
+  if (isNaN(age) || age <= 0 || age > 120) {
+    showAlert('Please enter a valid age (1–120).');
+    return;
+  }
+  if (!/^[0-9+\-\s]{7,15}$/.test(phone)) {
+    showAlert('Please enter a valid phone number (7–15 digits).');
     return;
   }
   if (password.length < 6) {
@@ -143,7 +155,7 @@ async function handleRegister(e) {
   setLoading('register-btn', true);
 
   try {
-    const params = new URLSearchParams({ name, email, password, role: 'patient' });
+    const params = new URLSearchParams({ name, email, password, role: 'patient', age, gender, phone });
     const res  = await fetch(`${API}/auth/register?${params}`, { method: 'POST' });
     const data = await res.json();
 
@@ -152,13 +164,13 @@ async function handleRegister(e) {
       return;
     }
 
-    showAlert('Account created! Please sign in.', 'success');
+    showAlert('Account created successfully! Please sign in.', 'success');
     setTimeout(() => switchTab('login'), 1200);
 
   } catch (err) {
     showAlert('Cannot connect to server. Is the backend running?');
     console.error(err);
   } finally {
-    setLoading('register-btn', false, 'Create Account');
+    setLoading('register-btn', false, 'Create Patient Account');
   }
 }

@@ -29,13 +29,15 @@ function switchNav(view, el) {
     'hospitals': 'Hospitals',
     'doctors': 'Doctors',
     'appointments': 'My Appointments',
-    'history': 'Medical History'
+    'history': 'Medical History',
+    'profile': 'My Profile'
   };
-  document.getElementById('breadcrumb').innerHTML = `Patient <span>/ ${titleMap[view]}</span>`;
+  document.getElementById('breadcrumb').innerHTML = `Patient <span>/ ${titleMap[view] || view}</span>`;
 
   if (view === 'hospitals') loadHospitals();
   if (view === 'appointments') loadAppointments();
   if (view === 'history') loadHistory();
+  if (view === 'profile') loadProfile();
 }
 
 function logout() {
@@ -382,14 +384,67 @@ async function loadHistory() {
   }
 }
 
+/* ── PROFILE ─────────────────────────────────────────────────────────────── */
+async function loadProfile() {
+  const container = document.getElementById('profile-card-container');
+  container.innerHTML = '<div class="empty-state">Loading profile...</div>';
+  try {
+    const res = await fetch(`${API}/patient/profile`, { headers: authHeaders() });
+    if (!res.ok) throw new Error();
+    const p = await res.json();
+    const genderIcon = p.gender === 'male' ? '♂️' : p.gender === 'female' ? '♀️' : '⚧️';
+    const genderLabel = p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : '—';
+    container.innerHTML = `
+      <div class="card" style="max-width: 640px;">
+        <div style="display:flex;align-items:center;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--border);margin-bottom:24px;">
+          <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--accent-primary),#3b82f6);color:#fff;
+                      display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:700;flex-shrink:0;">
+            ${escHtml(p.name.charAt(0).toUpperCase())}
+          </div>
+          <div>
+            <div style="font-size:1.25rem;font-weight:700;color:var(--text-primary);">${escHtml(p.name)}</div>
+            <div style="font-size:0.875rem;color:var(--text-secondary);margin-top:2px;">${escHtml(p.email)}</div>
+            <div style="margin-top:8px;"><span class="badge badge-active">Patient</span></div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:600;margin-bottom:6px;">Age</div>
+            <div style="font-size:1rem;font-weight:600;color:var(--text-primary);">${p.age ? p.age + ' years' : '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:600;margin-bottom:6px;">Gender</div>
+            <div style="font-size:1rem;font-weight:600;color:var(--text-primary);">${genderIcon} ${genderLabel}</div>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:600;margin-bottom:6px;">Phone</div>
+            <div style="font-size:1rem;font-weight:600;color:var(--text-primary);">${p.phone ? escHtml(p.phone) : '—'}</div>
+          </div>
+          <div>
+            <div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);font-weight:600;margin-bottom:6px;">Email</div>
+            <div style="font-size:1rem;font-weight:600;color:var(--text-primary);">${escHtml(p.email)}</div>
+          </div>
+        </div>
+      </div>`;
+  } catch (err) {
+    container.innerHTML = '<div class="empty-state">Error loading profile.</div>';
+  }
+}
+
 /* ── Init ────────────────────────────────────────────────────────────────── */
+// Global patient demographics (for PDF reports etc.)
+let _patientProfile = {};
+
 (async function init() {
   try {
     const res = await fetch(`${API}/patient/profile`, { headers: authHeaders() });
     if (res.ok) {
       const data = await res.json();
+      _patientProfile = data;
       document.getElementById('header-name').textContent = data.name;
-      localStorage.setItem('name', data.name); // update local storage cache
+      localStorage.setItem('name', data.name);
+      const avatar = document.getElementById('avatar-circle');
+      if (avatar && data.name) avatar.textContent = data.name.charAt(0).toUpperCase();
     }
   } catch (err) {
     console.error('Failed to load patient profile', err);

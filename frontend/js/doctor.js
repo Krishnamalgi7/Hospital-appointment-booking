@@ -134,9 +134,17 @@ async function loadAppointments() {
         const ampm = hh >= 12 ? 'PM' : 'AM';
         return `${hh % 12 || 12}:${mm} ${ampm}`;
       }
+      const ageGender = [
+        a.patient_age ? `${a.patient_age}y` : null,
+        a.patient_gender ? a.patient_gender.charAt(0).toUpperCase() + a.patient_gender.slice(1) : null
+      ].filter(Boolean).join(' · ');
+
       return `
       <tr>
-        <td style="font-weight: 500;">${escHtml(a.patient_name)}</td>
+        <td style="font-weight: 500;">
+          ${escHtml(a.patient_name)}
+          ${ageGender ? `<br><span style="font-size: 0.78rem; color: var(--text-muted);">${escHtml(ageGender)}</span>` : ''}
+        </td>
         <td style="color: var(--text-secondary);">#${a.patient_id}</td>
         <td>
           ${fmtDate(a.appointment_date)}<br>
@@ -163,6 +171,7 @@ async function loadAppointments() {
           }
         </td>
       </tr>`;
+
     }).join('');
   } catch (err) {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center empty-state">Error loading appointments.</td></tr>';

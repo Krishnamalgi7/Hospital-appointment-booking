@@ -105,6 +105,21 @@
     #alert-box { margin-bottom: 20px; }
     .alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.9rem; margin-bottom: 16px; display: flex; align-items: center; gap: 10px;}
     .alert-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); color: var(--danger); }
+    /* Dark-theme select dropdown fix */
+    #register-form select {
+      background: var(--bg-card, #1e293b);
+      color: var(--text-primary, #f1f5f9);
+      border: 1px solid var(--border, rgba(255,255,255,0.08));
+      border-radius: var(--radius-sm, 6px);
+      width: 100%; height: 100%; padding: 22px 16px 8px;
+      font-size: 0.95rem; font-family: 'Inter', sans-serif;
+      outline: none; appearance: none;
+      color-scheme: dark;
+    }
+    #register-form select option {
+      background: #1e293b;
+      color: #f1f5f9;
+    }
   </style>
 </head>
 <body>
@@ -149,7 +164,7 @@
       </form>
 
       <!-- ── Register Form ───────────────────────────────────────────────── -->
-      <form id="register-form" class="auth-form" onsubmit="handleRegister(event)">
+      <form id="register-form" class="auth-form" onsubmit="handleRegister(event)" style="max-height: 62vh; overflow-y: auto; padding-right: 4px;">
         <div class="form-floating">
           <input type="text" id="reg-name" placeholder=" " required autocomplete="name" />
           <label for="reg-name">Full Name</label>
@@ -157,6 +172,28 @@
         <div class="form-floating">
           <input type="email" id="reg-email" placeholder=" " required autocomplete="email" />
           <label for="reg-email">Email Address</label>
+        </div>
+
+        <!-- Age + Gender grid row -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div class="form-floating">
+            <input type="number" id="reg-age" placeholder=" " min="1" max="120" required />
+            <label for="reg-age">Age</label>
+          </div>
+          <div class="form-floating">
+            <select id="reg-gender" required style="appearance: none; cursor: pointer;">
+              <option value="" disabled selected hidden></option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+            <label for="reg-gender" style="pointer-events: none;">Gender</label>
+          </div>
+        </div>
+
+        <div class="form-floating">
+          <input type="tel" id="reg-phone" placeholder=" " pattern="[0-9+\-\s]{7,15}" required autocomplete="tel" />
+          <label for="reg-phone">Phone Number</label>
         </div>
         <div class="form-floating">
           <input type="password" id="reg-password" placeholder=" " required minlength="6" autocomplete="new-password" />
@@ -177,6 +214,7 @@
           Already have an account? <a href="#" onclick="switchTab('login'); return false;" style="color: var(--accent-primary); font-weight: 500;">Sign In</a>
         </div>
       </form>
+
 
     </div>
   </div>

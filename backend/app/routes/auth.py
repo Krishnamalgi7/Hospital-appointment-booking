@@ -6,13 +6,33 @@ from sqlalchemy import text
 
 router = APIRouter()
 
+from typing import Optional
+
 # ✅ REGISTER
 @router.post("/register")
-def register(name: str, email: str, password: str, role: str = "patient", db: Session = Depends(get_db)):
-
+def register(
+    name: str,
+    email: str,
+    password: str,
+    role: str = "patient",
+    age: Optional[int] = None,
+    gender: Optional[str] = None,
+    phone: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     # prevent doctor/admin self registration
     if role in ["doctor", "admin"]:
         role = "patient"
+
+    # Validate gender value
+    if gender and gender not in ["male", "female", "other"]:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Gender must be male, female, or other")
+
+    # Validate age
+    if age is not None and age <= 0:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Age must be a positive number")
 
     # check if user exists
     existing_user = db.execute(text("SELECT * FROM users WHERE email=:email"), {"email": email}).fetchone()
@@ -33,12 +53,17 @@ def register(name: str, email: str, password: str, role: str = "patient", db: Se
 
     new_user_id = user_result.lastrowid
 
-    # Automatically create linked patient profile
+    # Automatically create linked patient profile with demographics
     if role == "patient":
         db.execute(text("""
-            INSERT INTO patients (user_id)
-            VALUES (:user_id)
-        """), {"user_id": new_user_id})
+            INSERT INTO patients (user_id, age, gender, phone)
+            VALUES (:user_id, :age, :gender, :phone)
+        """), {
+            "user_id": new_user_id,
+            "age": age,
+            "gender": gender,
+            "phone": phone
+        })
 
     db.commit()
 

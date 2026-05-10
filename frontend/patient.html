@@ -21,6 +21,7 @@
         <div class="nav-item active" onclick="switchNav('hospitals', this)">🏥 Book Appointment</div>
         <div class="nav-item" onclick="switchNav('appointments', this)">🗓 My Appointments</div>
         <div class="nav-item" onclick="switchNav('history', this)">📋 Medical History</div>
+        <div class="nav-item" onclick="switchNav('profile', this)">👤 My Profile</div>
       </div>
       <div class="sidebar-footer">
         <div class="nav-item" onclick="logout()" style="color: var(--danger);">🚪 Sign Out</div>
@@ -33,7 +34,7 @@
         <div class="breadcrumb" id="breadcrumb">Patient <span>/ Hospitals</span></div>
         <div class="user-menu">
           <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);" id="header-name">Patient</span>
-          <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;">P</div>
+          <div id="avatar-circle" style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.95rem;">P</div>
         </div>
       </header>
 
@@ -103,6 +104,19 @@
           </div>
           <div id="history-list">
             <div class="empty-state">Loading records...</div>
+          </div>
+        </section>
+
+        <!-- ── PROFILE VIEW ───────────────────────────────────────────── -->
+        <section id="view-profile" class="view-section hidden">
+          <div class="flex-between mb-6">
+            <div>
+              <h2>My Profile</h2>
+              <p class="text-muted" style="margin-top: 4px; font-size: 0.95rem;">Your personal and contact information on file.</p>
+            </div>
+          </div>
+          <div id="profile-card-container">
+            <div class="empty-state">Loading profile...</div>
           </div>
         </section>
 
