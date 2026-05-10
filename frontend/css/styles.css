@@ -448,3 +448,60 @@ tr:hover { background: var(--bg-card-hover); }
   .auth-banner { display: none; }
   .auth-form-container { width: 100%; padding: 30px 20px; }
 }
+
+/* ── Slot Grid & Cards (Appointment Scheduling) ──────────────────────────── */
+.slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.slot-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 10px 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  text-align: center;
+  transition: all var(--transition);
+  line-height: 1;
+}
+
+.slot-card:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+}
+
+.slot-card.selected {
+  background: var(--accent-primary);
+  border-color: var(--accent-primary);
+  color: #0F172A;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.4);
+  transform: translateY(-2px);
+}
+
+.slot-card:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+  text-decoration: line-through;
+}
+
+/* Slot grid scrollbar */
+.slot-grid::-webkit-scrollbar { width: 4px; }
+.slot-grid::-webkit-scrollbar-track { background: var(--bg-secondary); border-radius: 2px; }
+.slot-grid::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.slot-grid::-webkit-scrollbar-thumb:hover { background: var(--accent-primary); }
+

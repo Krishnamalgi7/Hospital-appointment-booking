@@ -123,14 +123,15 @@
           
           <div class="card" style="max-width: 800px;">
             <form id="record-form" onsubmit="submitRecord(event)">
+              <input type="hidden" id="rec-appointment-id" />
               <div class="form-group">
                 <label>Patient ID</label>
                 <input type="number" id="rec-patient-id" required min="1" />
                 <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">Use the 'Add Record' button from the Appointments tab to auto-fill this.</div>
               </div>
               <div class="form-group">
-                <label>Next Visit Date</label>
-                <input type="date" id="rec-next-visit" required />
+                <label>Next Visit Date <span style="color: var(--text-muted); font-size: 0.8rem;">(optional)</span></label>
+                <input type="date" id="rec-next-visit" />
               </div>
               <div class="form-floating">
                 <textarea id="rec-diagnosis" placeholder=" " required></textarea>
@@ -140,8 +141,11 @@
                 <textarea id="rec-medicines" placeholder=" " required></textarea>
                 <label>Prescribed Medicines (Dosage/Frequency)</label>
               </div>
-              <div class="mt-6">
+              <div class="mt-6" style="display: flex; gap: 12px; align-items: center;">
                 <button type="submit" class="btn btn-primary" id="record-btn">Save Medical Record</button>
+                <button type="button" class="btn btn-secondary" id="download-report-btn" style="display:none;" onclick="downloadReport()">
+                  ⬇ Download Report
+                </button>
               </div>
             </form>
           </div>

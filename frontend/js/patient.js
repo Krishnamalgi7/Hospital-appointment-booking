@@ -63,6 +63,32 @@ function escHtml(str) {
   return div.innerHTML;
 }
 
+/* ── Date / Time Formatters (module-level) ───────────────────────────────── */
+// Strips ISO datetime suffix "T00:00:00" — returns plain YYYY-MM-DD
+function fmtDate(val) {
+  if (!val) return '';
+  return String(val).split('T')[0];
+}
+
+// Converts HH:MM:SS strings OR raw MySQL timedelta seconds to 12-hr AM/PM
+function fmtTime(val) {
+  if (!val && val !== 0) return '';
+  let hh, mm;
+  const s = String(val);
+  if (s.includes(':')) {
+    [hh, mm] = s.split(':');
+  } else {
+    const secs = parseInt(s, 10);
+    hh = Math.floor(secs / 3600);
+    mm = Math.floor((secs % 3600) / 60);
+  }
+  hh = parseInt(hh, 10);
+  mm = String(mm).padStart(2, '0');
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = hh % 12 || 12;
+  return `${h12}:${mm} ${ampm}`;
+}
+
 /* ── Modals ──────────────────────────────────────────────────────────────── */
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { 
@@ -147,23 +173,86 @@ function openBookModal(doctorId, doctorName, doctorSpec) {
   
   // Set min date to today
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('b-date').min = today;
-  document.getElementById('b-date').value = '';
+  const dateInput = document.getElementById('b-date');
+  dateInput.min = today;
+  dateInput.value = '';
+  
+  document.getElementById('b-slots-container').innerHTML = '<div class="empty-state" style="padding: 10px; font-size: 0.9rem;">Please select a date first</div>';
+  document.getElementById('b-time').value = '';
+  
+  // Add change listener if not already added
+  if (!dateInput.dataset.listenerAdded) {
+    dateInput.addEventListener('change', fetchAvailableSlots);
+    dateInput.dataset.listenerAdded = 'true';
+  }
   
   openModal('book-modal');
+}
+
+async function fetchAvailableSlots() {
+  const doctorId = document.getElementById('b-doctor-id').value;
+  const date = document.getElementById('b-date').value;
+  const container = document.getElementById('b-slots-container');
+  
+  if (!date) {
+    container.innerHTML = '<div class="empty-state" style="padding: 10px; font-size: 0.9rem;">Please select a date first</div>';
+    return;
+  }
+  
+  container.innerHTML = '<div class="empty-state" style="padding: 10px; font-size: 0.9rem;">Loading slots...</div>';
+  document.getElementById('b-time').value = '';
+  
+  try {
+    const params = new URLSearchParams({ doctor_id: doctorId, appointment_date: date });
+    const res = await fetch(`${API}/patient/available-slots?${params}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    
+    if (data.available_slots.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="padding: 10px; font-size: 0.9rem; color: var(--danger);">No available slots on this date.</div>';
+      return;
+    }
+    
+    container.innerHTML = data.available_slots.map(slot => {
+      const [hh, mm] = slot.split(':');
+      const h = parseInt(hh, 10);
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const h12 = h % 12 || 12;
+      const timeLabel = `${h12}:${mm} ${ampm}`;
+      return `<button type="button" class="slot-card" onclick="selectSlot(this, '${slot}')">${timeLabel}</button>`;
+    }).join('');
+    
+  } catch (err) {
+    container.innerHTML = '<div class="empty-state" style="padding: 10px; font-size: 0.9rem;">Error loading slots.</div>';
+  }
+}
+
+function selectSlot(btn, timeString) {
+  // Deselect all
+  document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('selected'));
+  // Select clicked
+  btn.classList.add('selected');
+  document.getElementById('b-time').value = timeString;
 }
 
 async function handleBookSubmit(e) {
   e.preventDefault();
   const doctor_id = document.getElementById('b-doctor-id').value;
   const appointment_date = document.getElementById('b-date').value;
+  const appointment_time = document.getElementById('b-time').value;
+  
+  if (!appointment_time) {
+    showToast('Please select an available time slot', 'error');
+    return;
+  }
+  
   const btn = document.getElementById('book-btn');
   
   btn.disabled = true;
   btn.textContent = 'Booking...';
 
   try {
-    const params = new URLSearchParams({ doctor_id, appointment_date });
+    const params = new URLSearchParams({ doctor_id, appointment_date, appointment_time });
     const res = await fetch(`${API}/patient/book?${params}`, {
       method: 'POST',
       headers: authHeaders()
@@ -200,7 +289,10 @@ async function loadAppointments() {
 
     tbody.innerHTML = data.map(a => `
       <tr>
-        <td style="font-weight: 500;">${escHtml(a.appointment_date)}</td>
+        <td style="font-weight: 500;">
+          ${fmtDate(a.appointment_date)}<br>
+          <span style="font-size: 0.85rem; color: var(--accent-primary); font-weight: 600;">${fmtTime(a.appointment_time)}</span>
+        </td>
         <td>Dr. ${escHtml(a.doctor_name)}</td>
         <td style="color: var(--text-secondary);">${escHtml(a.specialization)}</td>
         <td style="color: var(--text-secondary);">${escHtml(a.hospital_name)}</td>
@@ -249,11 +341,29 @@ async function loadHistory() {
       return;
     }
 
-    container.innerHTML = data.map(r => `
+    container.innerHTML = data.map(r => {
+      let apptInfo = '';
+      if (r.appointment_date) {
+        let timeStr = '';
+        if (r.appointment_time || r.appointment_time === 0) {
+          const s = String(r.appointment_time);
+          let hh, mm;
+          if (s.includes(':')) { [hh, mm] = s.split(':'); }
+          else { const secs = parseInt(s, 10); hh = Math.floor(secs / 3600); mm = Math.floor((secs % 3600) / 60); }
+          hh = parseInt(hh, 10); mm = String(mm).padStart(2, '0');
+          const ampm = hh >= 12 ? 'PM' : 'AM';
+          timeStr = ` &bull; ${hh % 12 || 12}:${mm} ${ampm}`;
+        }
+        apptInfo = `<span style="font-size: 0.8rem; color: var(--text-secondary);">Visited: ${fmtDate(r.appointment_date)}${timeStr}</span>`;
+      }
+      return `
       <div class="card" style="margin-bottom: 16px;">
         <div class="flex-between mb-4" style="border-bottom: 1px solid var(--border); padding-bottom: 12px;">
-          <h3 style="font-size: 1.1rem; color: var(--accent-primary);">Dr. ${escHtml(r.doctor_name)}</h3>
-          <span class="badge badge-active">Next Visit: ${escHtml(r.next_visit_date || 'N/A')}</span>
+          <div>
+            <h3 style="font-size: 1.1rem; color: var(--accent-primary);">Dr. ${escHtml(r.doctor_name)}</h3>
+            ${apptInfo}
+          </div>
+          <span class="badge badge-active">${r.next_visit_date ? 'Next Visit: ' + escHtml(r.next_visit_date) : 'No Follow-up'}</span>
         </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
           <div>
@@ -265,8 +375,8 @@ async function loadHistory() {
             <div style="font-size: 0.95rem;">${escHtml(r.medicines)}</div>
           </div>
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   } catch (err) {
     container.innerHTML = '<div class="empty-state">Error loading history.</div>';
   }

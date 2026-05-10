@@ -59,6 +59,61 @@ function escHtml(str) {
   return div.innerHTML;
 }
 
+/* ── HOSPITAL SCHEDULE ───────────────────────────────────────────────────── */
+async function openScheduleModal(id) {
+  document.getElementById('s-hospital-id').value = id;
+  
+  try {
+    const res = await fetch(`${API}/admin/hospital-schedule/${id}`, { headers: authHeaders() });
+    const data = await res.json();
+    
+    if (data.start_time) {
+      document.getElementById('s-start-time').value = data.start_time.substring(0, 5);
+      document.getElementById('s-end-time').value = data.end_time.substring(0, 5);
+      document.getElementById('s-interval').value = data.slot_interval;
+      document.getElementById('s-break-start').value = data.break_start ? data.break_start.substring(0, 5) : '';
+      document.getElementById('s-break-end').value = data.break_end ? data.break_end.substring(0, 5) : '';
+    } else {
+      document.getElementById('s-start-time').value = '09:00';
+      document.getElementById('s-end-time').value = '17:00';
+      document.getElementById('s-interval').value = 30;
+      document.getElementById('s-break-start').value = '';
+      document.getElementById('s-break-end').value = '';
+    }
+  } catch (err) {
+    console.error('Failed to load schedule', err);
+  }
+  
+  openModal('schedule-modal');
+}
+
+async function handleScheduleSubmit(e) {
+  e.preventDefault();
+  const id = document.getElementById('s-hospital-id').value;
+  const start_time = document.getElementById('s-start-time').value;
+  const end_time = document.getElementById('s-end-time').value;
+  const slot_interval = parseInt(document.getElementById('s-interval').value, 10);
+  const break_start = document.getElementById('s-break-start').value || null;
+  const break_end = document.getElementById('s-break-end').value || null;
+  
+  const payload = { start_time, end_time, slot_interval, break_start, break_end };
+  
+  try {
+    const res = await fetch(`${API}/admin/hospital-schedule/${id}`, {
+      method: 'PUT',
+      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!res.ok) throw new Error('Failed to save schedule');
+    
+    showToast('Schedule updated successfully', 'success');
+    closeModal('schedule-modal');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 /* ── Modals ──────────────────────────────────────────────────────────────── */
 function openModal(id) {
   document.getElementById(id).classList.add('open');
@@ -110,9 +165,10 @@ async function loadHospitals() {
           </div>
         </div>
         <div class="meta">👨‍⚕️ ${h.doctor_count} Doctor${h.doctor_count !== 1 ? 's' : ''}</div>
-        <div class="hospital-card-actions">
+        <div class="hospital-card-actions" style="flex-wrap: wrap;">
           <button class="btn btn-secondary btn-sm" style="flex:1" onclick="editHospital(${h.id})">Edit</button>
           <button class="btn btn-secondary btn-sm" style="flex:1" onclick="viewHospitalDoctors(${h.id})">Doctors</button>
+          <button class="btn btn-secondary btn-sm" style="flex:1; background: var(--bg-card-hover);" onclick="openScheduleModal(${h.id})">🗓 Schedule</button>
           <button class="btn btn-danger btn-sm" onclick="deleteHospital(${h.id})">🗑</button>
         </div>
       </div>

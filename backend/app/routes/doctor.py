@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.utils.dependencies import require_role
@@ -53,7 +54,8 @@ def add_medical_record(
     patient_id: int,
     diagnosis: str,
     medicines: str,
-    next_visit_date: str,
+    appointment_id: int,
+    next_visit_date: Optional[str] = None,
     db: Session = Depends(get_db),
     user=Depends(require_role("doctor"))
 ):
@@ -64,19 +66,37 @@ def add_medical_record(
     if not doctor:
         raise HTTPException(status_code=404, detail="Doctor not found")
 
+    # Validate appointment belongs to this doctor and patient
+    appt = db.execute(text("""
+        SELECT id, status FROM appointments
+        WHERE id = :appt_id AND doctor_id = :doc_id AND patient_id = :pat_id
+    """), {"appt_id": appointment_id, "doc_id": doctor.id, "pat_id": patient_id}).fetchone()
+
+    if not appt:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if appt.status == 'cancelled':
+        raise HTTPException(status_code=400, detail="Cannot add record to a cancelled appointment")
+
+    # Insert medical record
     db.execute(text("""
         INSERT INTO medical_records (patient_id, doctor_id, diagnosis, medicines, next_visit_date)
         VALUES (:patient_id, :doctor_id, :diagnosis, :medicines, :next_visit_date)
     """), {
-        "patient_id":     patient_id,
-        "doctor_id":      doctor.id,
-        "diagnosis":      diagnosis,
-        "medicines":      medicines,
-        "next_visit_date": next_visit_date
+        "patient_id":      patient_id,
+        "doctor_id":       doctor.id,
+        "diagnosis":       diagnosis,
+        "medicines":       medicines,
+        "next_visit_date": next_visit_date or None
     })
 
+    # Auto-complete the appointment
+    db.execute(text("""
+        UPDATE appointments SET status = 'completed' WHERE id = :appt_id
+    """), {"appt_id": appointment_id})
+
     db.commit()
-    return {"message": "Medical record added"}
+    return {"message": "Medical record added and appointment marked as completed"}
 
 
 # ─── EXISTING: Public list of all doctors (booking dropdown) ──────────────────

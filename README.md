@@ -1,116 +1,151 @@
 # Hospitum Core — Enterprise Hospital Management SaaS
 
-Hospitum Core is a modern enterprise-grade Hospital Appointment Booking and Management System built using FastAPI, MySQL, HTML, CSS, and JavaScript.
+Hospitum Core is a production-grade Enterprise Hospital Appointment Booking and Management System built with **FastAPI**, **MySQL**, **HTML5**, **CSS3**, and **Vanilla JavaScript**.
 
-The platform provides a premium SaaS experience for:
+The platform delivers a premium SaaS experience for three roles:
 
-* 👤 Patients
-* 👨‍⚕️ Doctors
-* 🏛️ Hospital Administrators
+| Role | Description |
+|---|---|
+| 👤 **Patient** | Browse hospitals, book appointments by time slot, view medical history |
+| 👨‍⚕️ **Doctor** | Manage appointments, write prescriptions, generate PDF reports |
+| 🏛️ **Admin** | Manage hospitals, doctors, schedule configuration, credential delivery |
 
-Designed with a clean healthcare-focused UI inspired by modern enterprise SaaS products like Stripe, Notion, and professional healthcare ERP systems.
+> Designed with a Clinical + Premium SaaS aesthetic inspired by Stripe, Linear, and enterprise healthcare ERP platforms.
 
 ---
 
-# ✨ Features
+# ✨ Feature Overview
 
 ## 👤 Patient Portal
 
-* Browse hospitals in premium card/grid layout
-* View doctors hospital-wise
-* Book appointments using modern modal workflow
-* View medical history securely
-* Responsive dashboard experience
+| Feature | Description |
+|---|---|
+| Hospital Browser | Premium card/grid layout to browse registered hospitals |
+| Doctor Listing | View active doctors by hospital with specialty badges |
+| Smart Slot Booking | Date picker triggers dynamic slot grid — select a time, click confirm |
+| Slot Grid UI | Clickable slot cards with hover, selected, and disabled states |
+| Appointment History | View booked appointments with date, time (12-hr), doctor, hospital, and status |
+| Medical History | View all past diagnoses, prescriptions, and next visit dates from doctors |
+| Cancel Appointment | Patients can cancel their own booked appointments |
+| Real-time Toasts | Success/error notifications for all booking actions |
 
 ---
 
 ## 👨‍⚕️ Doctor Dashboard
 
-* Appointment analytics overview
-* Manage appointment statuses
-* Add medical records
-* Professional doctor profile header
-* Patient appointment management
+| Feature | Description |
+|---|---|
+| Appointment Analytics | Overview cards: Total, Pending, Completed, Cancelled |
+| Appointment Table | Patient name, date, time (12-hr), status displayed together |
+| Smart Status Column | Only "booked" appointments show "Add Record" — cancelled/completed show label |
+| Medical Record Form | Write diagnosis and prescription with optional next visit date |
+| Auto-Complete | Saving a medical record **automatically marks the appointment as Completed** |
+| Download Report | After saving, a **⬇ Download Report** button generates a professional print-ready prescription PDF |
+| Prescription PDF | Includes: hospital, doctor, specialization, diagnosis, medicines, next visit, signature block, and Hospitum Core branding |
 
 ---
 
 ## 🏛️ Admin Control Center
 
-* Full Hospital CRUD
-* Hospital-wise Doctor Management
-* Create/Edit/Delete Doctors
-* Safe deletion strategy
-* Enterprise infrastructure dashboard
+| Feature | Description |
+|---|---|
+| Hospital CRUD | Create, edit, and delete hospitals with safe-delete validation |
+| Doctor Management | Create, edit, and deactivate doctors hospital-wise |
+| Auto-generated Passwords | Secure random passwords auto-generated for new doctors |
+| Email Credential Delivery | Credentials (name, email, password, hospital, login URL) sent via Gmail SMTP |
+| Fault-tolerant Email | Doctor account is always created; email failure is logged as a warning, not a blocker |
+| 🗓 Schedule Settings | Per-hospital schedule configuration modal inside each hospital card |
+| Working Hours Config | Set Start Time, End Time, Slot Interval (in minutes), Break Start, Break End |
+| Admin Stats | Total hospitals, doctors, patients, and appointments at a glance |
+
+---
+
+# 🗓️ Dynamic Hospital Scheduling Engine
+
+The core scheduling system is a real-world dynamic slot generation engine.
+
+**How it works:**
+
+1. Admin opens a hospital card → clicks **🗓 Schedule**
+2. Configures: Start Time, End Time, Slot Interval, Break Start, Break End
+3. When patient selects a date, the backend:
+   - Reads the hospital's schedule (or uses fallback defaults)
+   - Generates all valid time slots
+   - Excludes any slot that falls within the break window
+   - Removes already-booked slots for that doctor on that date
+   - Returns only available slots to the frontend
+4. Patient sees a **premium slot card grid** — selects a slot and confirms
+
+**Fallback Defaults (if no schedule configured):**
+
+| Setting | Default |
+|---|---|
+| Start Time | 09:00 AM |
+| End Time | 05:00 PM |
+| Slot Interval | 30 minutes |
+| Break | None |
+
+**Collision Prevention:**
+- Database enforces a `UNIQUE (doctor_id, appointment_date, appointment_time)` constraint
+- Backend catches `IntegrityError` and returns: *"Selected slot is already booked. Please choose another available slot."*
 
 ---
 
 # 🛠️ Tech Stack
 
-| Layer          | Technology                      |
-| -------------- | ------------------------------- |
-| Frontend       | HTML5, CSS3, Vanilla JavaScript |
-| Backend        | FastAPI (Python)                |
-| Database       | MySQL                           |
-| Authentication | JWT Token Authentication        |
-| API Testing    | Swagger UI                      |
-| Design         | Premium SaaS Design System      |
-
----
-
-# 🎨 Design Philosophy
-
-Hospitum Core follows a:
-
-# ✅ Clinical + Premium SaaS Design
-
-Inspired by:
-
-* Stripe Dashboard
-* Notion
-* Modern Healthcare ERP
-* Enterprise SaaS Platforms
+| Layer | Technology |
+|---|---|
+| Frontend | HTML5, CSS3, Vanilla JavaScript |
+| Backend | FastAPI (Python 3.10+) |
+| Database | MySQL |
+| Authentication | JWT Bearer Token (RBAC) |
+| Email | smtplib + Gmail SMTP |
+| API Docs | Swagger UI (`/docs`) |
+| Design | Premium SaaS Design System (CSS variables, Inter font) |
+| PDF Reports | Browser `window.print()` with custom HTML/CSS template |
 
 ---
 
 # 📁 Project Structure
 
-```bash
-Hospitum-Core/
+```
+Hospital-appointment-booking/
 │
 ├── backend/
 │   ├── app/
-│   │   ├── routes/              # API Route Handlers
-│   │   │   ├── admin.py
-│   │   │   ├── auth.py
-│   │   │   ├── doctor.py
-│   │   │   └── patient.py
+│   │   ├── routes/
+│   │   │   ├── admin.py        # Hospital CRUD, Doctor CRUD, Schedule API
+│   │   │   ├── auth.py         # Register / Login
+│   │   │   ├── doctor.py       # Appointments, Medical Records, Stats
+│   │   │   └── patient.py      # Hospitals, Doctors, Slots, Booking, History
 │   │   │
-│   │   ├── utils/               # Auth & Security Helpers
-│   │   │   ├── dependencies.py
-│   │   │   └── security.py
+│   │   ├── utils/
+│   │   │   ├── dependencies.py # JWT role guard
+│   │   │   ├── security.py     # bcrypt hashing, JWT encoding
+│   │   │   ├── email.py        # Gmail SMTP credential emailer
+│   │   │   └── password.py     # Secure random password generator
 │   │   │
-│   │   ├── main.py              # App Entry Point
-│   │   └── database.py          # SQLAlchemy Configuration
+│   │   ├── main.py             # FastAPI app entry point
+│   │   └── database.py         # SQLAlchemy engine & session
 │   │
-│   ├── requirements.txt         # Python Dependencies
-│   └── migrate.py               # Database Migration Script
+│   ├── create_admin.py         # Secure interactive admin bootstrap CLI
+│   └── requirements.txt
 │
 ├── frontend/
-│   ├── assets/                  # Images & Branding
 │   ├── css/
-│   │   └── styles.css           # Premium SaaS Design System
-│   ├── js/                      # Frontend Logic
-│   │   ├── admin.js
-│   │   ├── auth.js
-│   │   ├── doctor.js
-│   │   └── patient.js
+│   │   └── styles.css          # Full SaaS design system (tokens, components, slot grid)
+│   ├── js/
+│   │   ├── admin.js            # Hospital, Doctor, Schedule management logic
+│   │   ├── auth.js             # Login / Register logic
+│   │   ├── doctor.js           # Appointments, Records, PDF report generator
+│   │   └── patient.js          # Slot booking, history, appointment management
 │   │
-│   ├── index.html               # Unified Login/Register
-│   ├── admin.html               # Admin Dashboard
-│   ├── doctor.html              # Doctor Dashboard
-│   └── patient.html             # Patient Dashboard
+│   ├── index.html              # Unified Login / Register page
+│   ├── admin.html              # Admin dashboard
+│   ├── doctor.html             # Doctor dashboard
+│   └── patient.html            # Patient dashboard
 │
-├── .env                         # Environment Variables
+├── .env                        # SMTP + DB environment variables
 ├── .gitignore
 └── README.md
 ```
@@ -121,21 +156,18 @@ Hospitum-Core/
 
 ## 1️⃣ Create Database
 
-Open MySQL Workbench or MySQL CLI and run:
-
-```sql id="azn8sm"
+```sql
 CREATE DATABASE hospital_db;
-
 USE hospital_db;
 ```
 
 ---
 
-# 📋 Create Tables
+## 2️⃣ Create Tables
 
-## USERS TABLE
+### USERS TABLE
 
-```sql id="u6h8ko"
+```sql
 CREATE TABLE users (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -148,9 +180,9 @@ CREATE TABLE users (
 
 ---
 
-## PATIENTS TABLE
+### PATIENTS TABLE
 
-```sql id="4r9ht8"
+```sql
 CREATE TABLE patients (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
@@ -164,9 +196,9 @@ CREATE TABLE patients (
 
 ---
 
-## HOSPITALS TABLE
+### HOSPITALS TABLE
 
-```sql id="6jk4vt"
+```sql
 CREATE TABLE hospitals (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -176,14 +208,15 @@ CREATE TABLE hospitals (
 
 ---
 
-## DOCTORS TABLE
+### DOCTORS TABLE
 
-```sql id="0lwhgk"
+```sql
 CREATE TABLE doctors (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     specialization VARCHAR(100) NOT NULL,
     hospital_id INT NOT NULL,
+    hospital_name VARCHAR(100),
     phone VARCHAR(15),
     status ENUM('active', 'inactive') DEFAULT 'active',
 
@@ -194,27 +227,31 @@ CREATE TABLE doctors (
 
 ---
 
-## APPOINTMENTS TABLE
+### APPOINTMENTS TABLE
 
-```sql id="25xt2k"
+```sql
 CREATE TABLE appointments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     patient_id INT NOT NULL,
     doctor_id INT NOT NULL,
-    appointment_date DATETIME NOT NULL,
+    appointment_date DATE NOT NULL,
+    appointment_time TIME NOT NULL,
     status ENUM('booked', 'completed', 'cancelled') DEFAULT 'booked',
-    notes TEXT NULL,
+
+    CONSTRAINT unique_doctor_slot UNIQUE (doctor_id, appointment_date, appointment_time),
 
     FOREIGN KEY (patient_id) REFERENCES patients(id),
     FOREIGN KEY (doctor_id) REFERENCES doctors(id)
 );
 ```
 
+> **Important:** The `appointment_time` column and `unique_doctor_slot` constraint are critical for the scheduling engine and collision prevention.
+
 ---
 
-## MEDICAL RECORDS TABLE
+### MEDICAL RECORDS TABLE
 
-```sql id="y8mjlwm"
+```sql
 CREATE TABLE medical_records (
     id INT AUTO_INCREMENT PRIMARY KEY,
     patient_id INT NOT NULL,
@@ -228,72 +265,42 @@ CREATE TABLE medical_records (
     FOREIGN KEY (doctor_id) REFERENCES doctors(id)
 );
 ```
-# 👨‍💼 Create Admin Account
-
-For security reasons, no default password is exposed publicly.
-
-We provide a secure bootstrap script to easily create your admin account without touching the database directly.
 
 ---
 
-## Run the Bootstrap Script
+### HOSPITAL SCHEDULES TABLE *(New — Scheduling Engine)*
 
-Make sure your virtual environment is activated and you are in the `backend` directory.
+```sql
+CREATE TABLE hospital_schedules (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    hospital_id INT NOT NULL,
 
-```bash
-python create_admin.py
-```
-## Follow the Interactive Prompts
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
 
-The script will prompt you securely:
+    slot_interval INT NOT NULL DEFAULT 30,
 
-```text
---- Hospitum Core: Admin Bootstrap ---
-Enter admin name: Admin User
-Enter admin email: [EMAIL_ADDRESS]
-Enter admin password: [PASSWORD]
-Confirm admin password: [PASSWORD]
-✅ Admin account created successfully.
-```
+    break_start TIME NULL,
+    break_end TIME NULL,
 
-## Insert Admin User (Manual Method)
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-```sql id="jlwm9e"
-INSERT INTO users (
-    name,
-    email,
-    password_hash,
-    role
-)
-VALUES (
-    'Hospital Admin',
-    'admin@hospital.com',
-    'PASTE_GENERATED_HASH_HERE',
-    'admin'
+    FOREIGN KEY (hospital_id) REFERENCES hospitals(id)
 );
 ```
-## Generate password hash
 
-```python id="jlwm0d"
-from passlib.hash import bcrypt
-
-print(bcrypt.hash("your_admin_password"))
-```
-
-Copy the generated hash and paste in users column PASTE_GENERATED_HASH_HERE in the SQL query.
-
----
 ---
 
 # 🔗 Database Relationships
 
-```text id="3lsb3t"
+```
 users
  ├── patients
  └── doctors
 
 hospitals
- └── doctors
+ ├── doctors
+ └── hospital_schedules   ← NEW
 
 appointments
  ├── patients
@@ -306,410 +313,280 @@ medical_records
 
 ---
 
+# 👨‍💼 Create Admin Account
+
+Use the provided bootstrap script — no manual SQL required.
+
+```bash
+# From the backend/ directory with venv activated
+python create_admin.py
+```
+
+**Interactive prompts:**
+```
+--- Hospitum Core: Admin Bootstrap ---
+Enter admin name: Admin User
+Enter admin email: admin@hospital.com
+Enter admin password: ••••••••
+Confirm admin password: ••••••••
+✅ Admin account created successfully.
+```
+
+Password input is masked with `*` for security. bcrypt hashing is applied automatically.
+
+---
+
+# 🌍 Environment Variables
+
+Create a `.env` file in the `backend/` directory:
+
+```env
+# Database
+DATABASE_URL=mysql+pymysql://root:your_password@localhost/hospital_db
+
+# Gmail SMTP (for doctor credential emails)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USERNAME=your_gmail@gmail.com
+SMTP_PASSWORD=your_app_password
+```
+
+> **Gmail:** Use an [App Password](https://myaccount.google.com/apppasswords), not your real password. Enable 2-Step Verification first.
+
+---
+
 # 🚀 Backend Setup
 
-## 1️⃣ Navigate to backend
-
-```bash id="r4c9ul"
+```bash
+# 1. Navigate to backend
 cd backend
-```
 
----
-
-## 2️⃣ Create Virtual Environment
-
-### Windows
-
-```bash id="8r8j3z"
+# 2. Create virtual environment
 python -m venv venv
-```
 
-Activate:
-
-```bash id="t9r64s"
+# 3. Activate (Windows)
 venv\Scripts\activate
-```
 
----
-
-### Linux / Mac
-
-```bash id="jlwm7n"
-python3 -m venv venv
-```
-
-Activate:
-
-```bash id="m6gm1w"
+# 4. Activate (Linux/Mac)
 source venv/bin/activate
-```
 
----
-
-## 3️⃣ Install Dependencies
-
-```bash id="1w49l4"
+# 5. Install dependencies
 pip install -r requirements.txt
-```
 
----
+# 6. Create admin
+python create_admin.py
 
-## 4️⃣ Configure Database Connection
-
-Open:
-
-```bash id="jlwmym"
-backend/app/database.py
-```
-
-Update:
-
-```python id="1sww5g"
-DATABASE_URL = "mysql+pymysql://root:your_password@localhost/hospital_db"
-```
-
-Replace:
-
-* root
-* your_password
-
-with your own MySQL credentials.
-
----
-
-## 5️⃣ Install Required Package
-
-```bash id="zvjlwm"
-pip install cryptography
-```
-
----
-
-## 6️⃣ Run Backend Server
-
-```bash id="jlwm7r"
+# 7. Run server
 uvicorn app.main:app --reload
 ```
 
-Backend runs at:
-
-```text id="jlwm8g"
-http://127.0.0.1:8000
-```
-
----
-
-# 📄 Swagger API Docs
-
-Open:
-
-```text id="6bvmui"
-http://127.0.0.1:8000/docs
-```
-
-Use Swagger to:
-
-* test APIs
-* authorize JWT tokens
-* debug backend
+Backend runs at: `http://127.0.0.1:8000`  
+Swagger UI: `http://127.0.0.1:8000/docs`
 
 ---
 
 # 🌐 Frontend Setup
 
-## Navigate to frontend
-
-```bash id="jlwm6n"
+```bash
 cd frontend
-```
-
----
-
-## Run Local Server
-
-### Option 1 (Recommended)
-
-```bash id="jlwm5a"
 python -m http.server 5500
 ```
 
-Open:
+Open: `http://localhost:5500`
 
-```text id="jlwm41"
-http://localhost:5500
-```
-
----
-
-### Option 2
-
-Use VS Code Live Server extension.
+Or use **VS Code Live Server** extension.
 
 ---
 
 # 🔐 Authentication System
 
-The system uses:
-
-# ✅ JWT Authentication
-
-Roles:
-
-* admin
-* doctor
-* patient
+| Feature | Detail |
+|---|---|
+| Type | JWT Bearer Token |
+| Roles | `admin`, `doctor`, `patient` |
+| Storage | `localStorage` |
+| Protection | All APIs require `Authorization: Bearer <token>` |
+| Role Guard | FastAPI `Depends(require_role(...))` on every protected route |
 
 ---
 
-# 🔑 JWT Workflow
+# ⚡ API Endpoints Reference
 
-1. User logs in
-2. Backend returns JWT token
-3. Token stored in localStorage
-4. Protected APIs use:
+## Authentication
 
-```text id="jlwm2b"
-Authorization: Bearer <token>
-```
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/auth/register` | Register new patient |
+| POST | `/auth/login` | Login and receive JWT |
 
 ---
 
-# 👤 Patient Workflow
+## Patient APIs
 
-1. Register account
-2. Browse hospitals
-3. Select hospital
-4. Select doctor
-5. Book appointment
-6. View medical history
-
----
-
-# 👨‍⚕️ Doctor Workflow
-
-1. Admin creates doctor
-2. Doctor logs in
-3. Views appointments
-4. Updates appointment status
-5. Adds medical records
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/patient/profile` | Get patient profile |
+| GET | `/patient/hospitals` | List all hospitals |
+| GET | `/patient/available-slots` | Get available slots for doctor + date |
+| POST | `/patient/book` | Book an appointment with date + time |
+| GET | `/patient/appointments` | List patient's appointments |
+| GET | `/patient/history` | View medical history |
+| DELETE | `/patient/cancel/{id}` | Cancel an appointment |
 
 ---
 
-# 🏛️ Admin Workflow
+## Doctor APIs
 
-1. Login as admin
-2. Create hospitals
-3. Open hospital
-4. Manage doctors inside hospital
-5. Edit/Delete doctors safely
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/doctor/profile` | Get doctor profile |
+| GET | `/doctor/appointments` | List all appointments with patient info |
+| PUT | `/doctor/update-status` | Update appointment status |
+| POST | `/doctor/add-record` | Save medical record + auto-complete appointment |
+| GET | `/doctor/stats` | Get appointment statistics |
+| GET | `/doctor/list` | Public list of doctors (for patient booking) |
+
+---
+
+## Admin APIs
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/admin/create-hospital` | Create hospital |
+| GET | `/admin/hospitals` | List hospitals with doctor counts |
+| PUT | `/admin/update-hospital/{id}` | Update hospital details |
+| DELETE | `/admin/delete-hospital/{id}` | Delete hospital (safe) |
+| GET | `/admin/hospital-schedule/{id}` | Get hospital schedule config |
+| PUT | `/admin/hospital-schedule/{id}` | Set/update hospital schedule |
+| POST | `/admin/create-doctor` | Create doctor (auto-generates password, sends email) |
+| GET | `/admin/doctors` | List all doctors |
+| PUT | `/admin/update-doctor/{id}` | Update doctor details |
+| DELETE | `/admin/delete-doctor/{id}` | Delete doctor (safe) |
+| GET | `/admin/stats` | Platform-wide statistics |
 
 ---
 
 # 🔒 Safe Delete Strategy
 
-The system prevents unsafe deletion.
+| Entity | Blocked If |
+|---|---|
+| Hospital | Has active doctors assigned |
+| Doctor | Has appointments or medical records |
 
-## Hospitals
-
-Cannot delete hospital if doctors exist.
+This protects historical patient and appointment data from accidental deletion.
 
 ---
 
-## Doctors
+# 📧 Email Credential System
 
-Cannot delete doctor if:
+When an admin creates a new doctor:
 
-* appointments exist
-* medical records exist
-
-This protects historical healthcare data.
+1. A **secure random password** is auto-generated
+2. Password is **bcrypt-hashed** before DB insert
+3. A **professional HTML email** is sent to the doctor containing:
+   - Doctor name
+   - Login email
+   - Temporary password
+   - Assigned hospital
+   - Login URL
+4. If email fails → **doctor account is still created** (non-blocking)
+5. Admin sees a warning toast if email delivery failed
 
 ---
 
 # 🎨 UI/UX Highlights
 
-* Premium Healthcare SaaS UI
-* Responsive Dashboard Layouts
-* Sidebar Navigation
-* Modern Card Design
-* Toast Notifications
-* Modal Workflows
-* Professional Authentication Screen
-* Hospital-first navigation architecture
-
----
-
-# 📊 Dashboard Features
-
-## Admin
-
-* Total Hospitals
-* Total Doctors
-
----
-
-## Doctor
-
-* Pending Appointments
-* Completed Appointments
-* Cancelled Appointments
-
----
-
-## Patient
-
-* Upcoming Appointments
-* Medical History
-* Hospital Browsing
-
----
-
-# ⚡ API Endpoints Overview
-
-## Authentication
-
-```text id="jlwm8f"
-POST /auth/register
-POST /auth/login
-```
-
----
-
-## Patient
-
-```text
-GET /patient/profile
-GET /patient/hospitals
-GET /patient/appointments
-POST /patient/book
-GET /patient/history
-```
-
----
-
-## Doctor
-
-```text
-GET /doctor/profile
-GET /doctor/appointments
-PUT /doctor/update-status
-POST /doctor/add-record
-GET /doctor/stats
-```
-
----
-
-## Admin
-
-```text id="jlwm5i"
-POST /admin/create-hospital
-GET /admin/hospitals
-PUT /admin/update-hospital
-DELETE /admin/delete-hospital
-
-POST /admin/create-doctor
-PUT /admin/update-doctor
-DELETE /admin/delete-doctor
-```
+| Feature | Detail |
+|---|---|
+| Design System | CSS custom properties (variables) with Inter font |
+| Color Palette | Deep Slate `#0F172A` + Cyan `#06B6D4` accent |
+| Slot Grid | Responsive CSS grid with hover lift, cyan selected glow |
+| Time Format | All times displayed in 12-hr AM/PM format |
+| Date Format | ISO dates cleaned to `YYYY-MM-DD` display |
+| Toasts | Slide-in notification system (success / error / info / warning) |
+| Modals | Smooth overlay modals for all CRUD operations |
+| Responsive | Mobile-aware sidebar navigation |
 
 ---
 
 # 🧪 Useful MySQL Queries
 
-## Show tables
-
-```sql id="jlwm4j"
+```sql
+-- Check all tables
 SHOW TABLES;
-```
 
----
+-- View appointments with times
+SELECT * FROM appointments ORDER BY appointment_date, appointment_time;
 
-## View users
+-- View hospital schedules
+SELECT h.name, hs.* FROM hospital_schedules hs JOIN hospitals h ON h.id = hs.hospital_id;
 
-```sql id="jlwm3k"
-SELECT * FROM users;
-```
-
----
-
-## View hospitals
-
-```sql id="jlwm2l"
-SELECT * FROM hospitals;
-```
-
----
-
-## View doctors
-
-```sql id="jlwm1m"
-SELECT * FROM doctors;
-```
-
----
-
-## View appointments
-
-```sql id="jlwm0n"
-SELECT * FROM appointments;
-```
-
----
-
-## View medical records
-
-```sql id="jlwm9o"
+-- View medical records
 SELECT * FROM medical_records;
+
+-- View users by role
+SELECT id, name, email, role FROM users ORDER BY role;
 ```
 
 ---
 
-# 🚀 Deployment Suggestions
+# 🚀 Deployment
 
-| Service  | Recommendation              |
-| -------- | --------------------------- |
-| Frontend | Vercel / Netlify            |
-| Backend  | Railway / Render            |
+| Layer | Recommended Service |
+|---|---|
+| Frontend | Vercel / Netlify |
+| Backend | Railway / Render |
 | Database | Railway MySQL / PlanetScale |
 
 ---
 
 # 🛡️ Security Features
 
-* JWT Authentication
-* Role-Based Access Control
-* Protected APIs
-* Secure Password Hashing
-* Safe Delete Logic
+- JWT Authentication with role-based access control
+- bcrypt password hashing (all users and admins)
+- SMTP credentials loaded from `.env` only (never hardcoded)
+- Raw passwords never stored — only hashed values
+- `unique_doctor_slot` DB constraint prevents race-condition double-bookings
+- Safe delete logic protects critical healthcare records
 
 ---
 
-# 📸 Future Enhancements
+# 📸 What Was Built vs. What's Left
 
-Potential upgrades:
+## ✅ Implemented
 
-* Doctor availability scheduling
-* Email notifications
-* Video consultations
-* AI symptom analysis
-* Prescription PDF export
-* Analytics dashboard
-* Payment gateway integration
+- [x] Full Auth system (JWT, RBAC)
+- [x] Hospital & Doctor CRUD
+- [x] Dynamic Scheduling Engine
+- [x] Smart Slot Booking UI
+- [x] Collision prevention (DB constraint + backend error)
+- [x] Auto-complete appointment on medical record save
+- [x] Doctor Credential Email System (Gmail SMTP)
+- [x] Admin Bootstrap CLI (`create_admin.py`)
+- [x] Prescription PDF report generator
+- [x] Medical History with appointment date/time
+- [x] 12-hr time formatting across all dashboards
+- [x] Clean date display (stripped ISO timestamps)
+
+## 🔮 Future Enhancements
+
+- [ ] Patient profile edit (age, gender, phone)
+- [ ] Video consultations
+- [ ] AI symptom analysis
+- [ ] Payment gateway integration
+- [ ] Push notifications
+- [ ] Analytics dashboard with charts
+- [ ] Multi-branch hospital support
 
 ---
 
 # 👨‍💻 Developer Notes
 
-This project follows:
-
-# ✅ Enterprise-style Architecture
-
-Focus Areas:
-
-* scalable design
-* clean separation of concerns
-* professional workflow management
-* premium SaaS UI/UX
+This project follows enterprise-style architecture with:
+- Clean separation of concerns (routes / utils / frontend modules)
+- Professional workflow management
+- Fault-tolerant external service integration (email)
+- Real-world scheduling constraints enforced at the database level
 
 ---
 
@@ -721,19 +598,13 @@ Internal / Private Enterprise Software
 
 # ❤️ Built With
 
-* FastAPI
-* MySQL
-* Vanilla JavaScript
-* Modern SaaS Design Principles
+- **FastAPI** — High-performance Python API framework
+- **MySQL** — Relational database with scheduling constraints
+- **Vanilla JavaScript** — No framework overhead
+- **smtplib** — Gmail SMTP email delivery
+- **Passlib / bcrypt** — Secure password hashing
+- **Modern SaaS Design Principles** — Premium healthcare UX
 
 ---
 
-# ⭐ Final Note
-
-Hospitum Core is designed to simulate a real-world Hospital ERP / Healthcare SaaS workflow while maintaining clean architecture and modern UX suitable for:
-
-* portfolios
-* internships
-* major projects
-* resume showcase
-* SaaS experimentation
+> ⭐ Hospitum Core is designed to simulate a real-world Hospital ERP / Healthcare SaaS workflow — suitable for portfolios, internships, major projects, and SaaS experimentation.
