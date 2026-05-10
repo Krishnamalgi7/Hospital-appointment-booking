@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Doctor Dashboard — Hospitum Core</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <script src="js/theme.js"></script>
 </head>
 <body>
 
@@ -32,6 +33,10 @@
       <header class="top-header">
         <div class="breadcrumb" id="breadcrumb">Doctor <span>/ Overview</span></div>
         <div class="user-menu">
+          <button class="theme-toggle" onclick="toggleTheme()" title="Switch theme">
+            <span class="toggle-icon">🌙</span>
+            <span class="toggle-label">Dark</span>
+          </button>
           <span style="font-size: 0.9rem; font-weight: 500; color: var(--text-secondary);" id="header-name">Doctor</span>
           <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;">D</div>
         </div>
