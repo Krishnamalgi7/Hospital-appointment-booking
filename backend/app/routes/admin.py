@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+from typing import Optional
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.utils.dependencies import require_role
@@ -8,6 +10,13 @@ from app.utils.email import send_doctor_credentials
 from sqlalchemy import text
 
 router = APIRouter()
+
+class ScheduleUpdate(BaseModel):
+    start_time: str
+    end_time: str
+    slot_interval: int
+    break_start: Optional[str] = None
+    break_end: Optional[str] = None
 
 
 # ─── POST /admin/create-hospital ──────────────────────────────────────────────
@@ -181,6 +190,59 @@ def update_hospital(
                
     db.commit()
     return {"message": "Hospital updated successfully"}
+
+# ─── GET /admin/hospital-schedule/{hospital_id} ───────────────────────────────
+@router.get("/hospital-schedule/{hospital_id}")
+def get_hospital_schedule(
+    hospital_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("admin"))
+):
+    schedule = db.execute(text("""
+        SELECT start_time, end_time, slot_interval, break_start, break_end 
+        FROM hospital_schedules 
+        WHERE hospital_id = :hid
+    """), {"hid": hospital_id}).fetchone()
+    
+    if schedule:
+        return dict(schedule._mapping)
+    return {} # Return empty if no schedule
+
+# ─── PUT /admin/hospital-schedule/{hospital_id} ───────────────────────────────
+@router.put("/hospital-schedule/{hospital_id}")
+def update_hospital_schedule(
+    hospital_id: int,
+    payload: ScheduleUpdate,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("admin"))
+):
+    hospital = db.execute(text("SELECT id FROM hospitals WHERE id = :id"), {"id": hospital_id}).fetchone()
+    if not hospital:
+        raise HTTPException(status_code=404, detail="Hospital not found")
+        
+    existing = db.execute(text("SELECT id FROM hospital_schedules WHERE hospital_id = :hid"), {"hid": hospital_id}).fetchone()
+    
+    if existing:
+        db.execute(text("""
+            UPDATE hospital_schedules 
+            SET start_time = :st, end_time = :et, slot_interval = :si, 
+                break_start = :bs, break_end = :be
+            WHERE hospital_id = :hid
+        """), {
+            "st": payload.start_time, "et": payload.end_time, "si": payload.slot_interval,
+            "bs": payload.break_start or None, "be": payload.break_end or None, "hid": hospital_id
+        })
+    else:
+        db.execute(text("""
+            INSERT INTO hospital_schedules (hospital_id, start_time, end_time, slot_interval, break_start, break_end)
+            VALUES (:hid, :st, :et, :si, :bs, :be)
+        """), {
+            "hid": hospital_id, "st": payload.start_time, "et": payload.end_time, "si": payload.slot_interval,
+            "bs": payload.break_start or None, "be": payload.break_end or None
+        })
+        
+    db.commit()
+    return {"message": "Schedule updated successfully"}
 
 # ─── DELETE /admin/delete-hospital/{hospital_id} ──────────────────────────────
 @router.delete("/delete-hospital/{hospital_id}")

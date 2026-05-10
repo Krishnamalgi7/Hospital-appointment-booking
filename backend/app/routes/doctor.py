@@ -33,7 +33,7 @@ def get_appointments(
     user=Depends(require_role("doctor"))
 ):
     result = db.execute(text("""
-    SELECT a.id, a.appointment_date, a.status,
+    SELECT a.id, a.appointment_date, a.appointment_time, a.status,
            p.id as patient_id, u.name as patient_name
     FROM appointments a
     JOIN patients p ON a.patient_id = p.id
@@ -41,7 +41,7 @@ def get_appointments(
     WHERE a.doctor_id = (
         SELECT id FROM doctors WHERE user_id = :user_id
     )
-    ORDER BY a.appointment_date DESC
+    ORDER BY a.appointment_date DESC, a.appointment_time DESC
 """), {"user_id": user["user_id"]}).fetchall()
 
     return [dict(row._mapping) for row in result]
