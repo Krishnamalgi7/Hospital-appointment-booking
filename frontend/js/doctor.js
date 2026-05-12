@@ -167,7 +167,7 @@ async function loadAppointments() {
         <td style="text-align: right;">
           ${a.status === 'cancelled' || a.status === 'completed'
             ? `<span style="color: var(--text-muted); font-size: 0.85rem;">${a.status === 'completed' ? 'Completed' : 'Cancelled'}</span>`
-            : `<button class="btn btn-secondary btn-sm" onclick="prepRecord(${a.patient_id}, ${a.id})">Add Record</button>`
+            : `<button class="btn btn-secondary btn-sm" onclick="prepRecord(${a.patient_id}, ${a.id}, '${(a.patient_name||'').replace(/'/g,"\\'")}', ${a.patient_age||'null'}, '${(a.patient_gender||'')}')">Add Record</button>`
           }
         </td>
       </tr>`;
@@ -199,19 +199,27 @@ async function updateStatus(id, newStatus) {
 }
 
 /* ── MEDICAL RECORDS ─────────────────────────────────────────────────────── */
-// Store last saved record data for PDF generation
-let _lastRecord = {};
+// Store last saved record data + appointment context for PDF generation
+let _lastRecord  = {};
+let _apptContext = {};  // holds patient name / age / gender from appointment row
 
-function prepRecord(patientId, appointmentId) {
+function prepRecord(patientId, appointmentId, patientName, patientAge, patientGender) {
   switchNav('records', document.querySelectorAll('.nav-item')[2]);
-  document.getElementById('rec-patient-id').value = patientId;
+  document.getElementById('rec-patient-id').value     = patientId;
   document.getElementById('rec-appointment-id').value = appointmentId;
-  document.getElementById('rec-next-visit').value = '';
-  document.getElementById('rec-diagnosis').value = '';
-  document.getElementById('rec-medicines').value = '';
+  document.getElementById('rec-next-visit').value     = '';
+  document.getElementById('rec-diagnosis').value      = '';
+  document.getElementById('rec-medicines').value      = '';
+  // Store demographic context for the PDF report
+  _apptContext = {
+    patient_id:     patientId,
+    patient_name:   patientName   || '',
+    patient_age:    patientAge    || null,
+    patient_gender: patientGender || ''
+  };
   // Hide download button for fresh form
   document.getElementById('download-report-btn').style.display = 'none';
-  showToast(`Patient ID #${patientId} loaded.`, 'info');
+  showToast(`Patient #${patientId} loaded.`, 'info');
 }
 
 async function submitRecord(e) {
@@ -245,9 +253,17 @@ async function submitRecord(e) {
     if (!res.ok) throw new Error(data.detail || 'Failed to add record');
     
     showToast('Record saved. Appointment marked as completed!', 'success');
-    
-    // Store for report
-    _lastRecord = { patient_id, diagnosis, medicines, next_visit_date };
+
+    // Store for report — include patient demographics from appointment context
+    _lastRecord = {
+      patient_id:     patient_id,
+      patient_name:   _apptContext.patient_name   || '',
+      patient_age:    _apptContext.patient_age    || null,
+      patient_gender: _apptContext.patient_gender || '',
+      diagnosis,
+      medicines,
+      next_visit_date
+    };
     document.getElementById('download-report-btn').style.display = 'inline-flex';
     
     loadAppointments();
@@ -276,7 +292,13 @@ async function downloadReport() {
   const now     = new Date();
   const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-  const r       = _lastRecord;
+  const r = _lastRecord;
+
+  // Patient demographics
+  const patientName   = r.patient_name   || '—';
+  const patientAge    = r.patient_age    ? `${r.patient_age} yrs` : '—';
+  const genderRaw     = r.patient_gender || '';
+  const patientGender = genderRaw ? (genderRaw.charAt(0).toUpperCase() + genderRaw.slice(1)) : '—';
 
   const nextVisitRow = r.next_visit_date
     ? `<tr>
@@ -301,9 +323,14 @@ async function downloadReport() {
   .hdr .sub { font-size: 0.875rem; opacity: 0.7; margin-top: 4px; }
   .accent { height: 4px; background: linear-gradient(90deg,#06b6d4,#3b82f6); }
   .body { padding: 32px 40px; }
-  .meta { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; background: #f8fafc; border-radius: 8px; padding: 16px 20px; margin-bottom: 28px; border: 1px solid #e2e8f0; }
+  .meta { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; background: #f8fafc; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
   .meta .lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
   .meta .val { font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-top: 3px; }
+  .patient-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
+  .patient-card-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; color: #1d4ed8; border-bottom: 1.5px solid #bfdbfe; padding-bottom: 6px; margin-bottom: 12px; }
+  .patient-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .patient-grid .lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: #3b82f6; }
+  .patient-grid .val { font-size: 0.92rem; font-weight: 600; color: #0f172a; margin-top: 3px; }
   table.dtl { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
   table.dtl td.lbl { width: 160px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; padding: 8px 0; vertical-align: top; }
   table.dtl td.val { font-size: 0.95rem; font-weight: 500; padding: 8px 0; }
@@ -328,14 +355,29 @@ async function downloadReport() {
   </div>
   <div class="accent"></div>
   <div class="body">
+    <!-- Date / Time / ID row -->
     <div class="meta">
       <div><div class="lbl">Date</div><div class="val">${dateStr}</div></div>
       <div><div class="lbl">Time</div><div class="val">${timeStr}</div></div>
       <div><div class="lbl">Patient ID</div><div class="val">#${escHtml(String(r.patient_id))}</div></div>
     </div>
+
+    <!-- Patient Demographics Card -->
+    <div class="patient-card">
+      <div class="patient-card-title">Patient Details</div>
+      <div class="patient-grid">
+        <div><div class="lbl">Full Name</div><div class="val">${escHtml(patientName)}</div></div>
+        <div><div class="lbl">Age</div><div class="val">${escHtml(patientAge)}</div></div>
+        <div><div class="lbl">Gender</div><div class="val">${escHtml(patientGender)}</div></div>
+        <div><div class="lbl">Patient ID</div><div class="val">#${escHtml(String(r.patient_id))}</div></div>
+      </div>
+    </div>
+
+    <!-- Next visit (if set) -->
     <table class="dtl">
       ${nextVisitRow}
     </table>
+
     <div class="sec-title">Diagnosis / Complaint</div>
     <div class="sec-body">${escHtml(r.diagnosis)}</div>
     <div class="sec-title">Prescription &amp; Medicines</div>
@@ -354,6 +396,7 @@ async function downloadReport() {
 </div>
 </body>
 </html>`;
+
 
   const win = window.open('', '_blank', 'width=900,height=720');
   win.document.write(html);
