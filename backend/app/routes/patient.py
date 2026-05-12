@@ -186,22 +186,39 @@ def get_history(
         raise HTTPException(status_code=404, detail="Patient not found")
 
     result = db.execute(text("""
-        SELECT m.id, m.diagnosis, m.medicines, m.next_visit_date,
-               u.name as doctor_name,
-               a.appointment_date, a.appointment_time
+        SELECT
+            m.id,
+            m.diagnosis,
+            m.medicines,
+            m.next_visit_date,
+            u.name AS doctor_name,
+            (
+              SELECT a.appointment_date
+              FROM appointments a
+              WHERE a.patient_id = m.patient_id
+                AND a.doctor_id  = m.doctor_id
+                AND a.status     = 'completed'
+              ORDER BY ABS(TIMESTAMPDIFF(SECOND, a.appointment_date, DATE(m.created_at)))
+              LIMIT 1
+            ) AS appointment_date,
+            (
+              SELECT a.appointment_time
+              FROM appointments a
+              WHERE a.patient_id = m.patient_id
+                AND a.doctor_id  = m.doctor_id
+                AND a.status     = 'completed'
+              ORDER BY ABS(TIMESTAMPDIFF(SECOND, a.appointment_date, DATE(m.created_at)))
+              LIMIT 1
+            ) AS appointment_time
         FROM medical_records m
         JOIN doctors d ON m.doctor_id = d.id
-        JOIN users u ON d.user_id = u.id
-        LEFT JOIN appointments a ON a.patient_id = m.patient_id 
-            AND a.doctor_id = m.doctor_id
-            AND a.status = 'completed'
+        JOIN users   u ON d.user_id   = u.id
         WHERE m.patient_id = :patient_id
-        GROUP BY m.id, m.diagnosis, m.medicines, m.next_visit_date,
-                 u.name, a.appointment_date, a.appointment_time
         ORDER BY m.created_at DESC
     """), {"patient_id": patient.id}).fetchall()
 
     return [dict(row._mapping) for row in result]
+
 
 
 # ─── NEW: Patient's own appointments list ─────────────────────────────────────

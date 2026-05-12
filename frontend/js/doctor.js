@@ -26,14 +26,17 @@ function switchNav(view, el) {
   document.getElementById(`view-${view}`).classList.remove('hidden');
 
   const titleMap = {
-    'dashboard': 'Overview',
+    'dashboard':    'Overview',
     'appointments': 'Appointments',
-    'records': 'Medical Records'
+    'records':      'Medical Records',
+    'lookup':       'Patient Lookup'
   };
-  document.getElementById('breadcrumb').innerHTML = `Doctor <span>/ ${titleMap[view]}</span>`;
+  document.getElementById('breadcrumb').innerHTML = `Doctor <span>/ ${titleMap[view] || view}</span>`;
 
-  if (view === 'dashboard') loadStats();
+  if (view === 'dashboard')    loadStats();
   if (view === 'appointments') loadAppointments();
+  // Clear lookup results when navigating away to ensure no data persists
+  if (view !== 'lookup') clearLookup();
 }
 
 function logout() {
@@ -210,6 +213,21 @@ function prepRecord(patientId, appointmentId, patientName, patientAge, patientGe
   document.getElementById('rec-next-visit').value     = '';
   document.getElementById('rec-diagnosis').value      = '';
   document.getElementById('rec-medicines').value      = '';
+
+  // Reset form lock state for new appointment
+  const btn = document.getElementById('record-btn');
+  btn.disabled           = false;
+  btn.textContent        = 'Save Medical Record';
+  btn.dataset.saved      = 'false';
+  btn.style.background   = '';
+  btn.style.borderColor  = '';
+  btn.style.cursor       = '';
+  ['rec-diagnosis', 'rec-medicines', 'rec-next-visit', 'rec-patient-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.removeAttribute('readonly');
+  });
+  document.getElementById('download-report-btn').style.display = 'none';
+
   // Store demographic context for the PDF report
   _apptContext = {
     patient_id:     patientId,
@@ -217,34 +235,38 @@ function prepRecord(patientId, appointmentId, patientName, patientAge, patientGe
     patient_age:    patientAge    || null,
     patient_gender: patientGender || ''
   };
-  // Hide download button for fresh form
-  document.getElementById('download-report-btn').style.display = 'none';
   showToast(`Patient #${patientId} loaded.`, 'info');
 }
 
 async function submitRecord(e) {
   e.preventDefault();
-  
-  const patient_id     = document.getElementById('rec-patient-id').value;
-  const appointment_id = document.getElementById('rec-appointment-id').value;
+
+  const patient_id      = document.getElementById('rec-patient-id').value;
+  const appointment_id  = document.getElementById('rec-appointment-id').value;
   const next_visit_date = document.getElementById('rec-next-visit').value;
-  const diagnosis      = document.getElementById('rec-diagnosis').value;
-  const medicines      = document.getElementById('rec-medicines').value;
-  const btn            = document.getElementById('record-btn');
-  
+  const diagnosis       = document.getElementById('rec-diagnosis').value;
+  const medicines       = document.getElementById('rec-medicines').value;
+  const btn             = document.getElementById('record-btn');
+
   if (!appointment_id) {
     showToast("Please use the 'Add Record' button from Appointments tab.", 'error');
     return;
   }
-  
-  btn.disabled = true;
+
+  // Guard: if already saved for this appointment, block silently
+  if (btn.dataset.saved === 'true') {
+    showToast('Record already saved for this appointment.', 'info');
+    return;
+  }
+
+  btn.disabled    = true;
   btn.textContent = 'Saving...';
 
   try {
     const params = new URLSearchParams({ patient_id, diagnosis, medicines, appointment_id });
     if (next_visit_date) params.append('next_visit_date', next_visit_date);
-    
-    const res = await fetch(`${API}/doctor/add-record?${params}`, {
+
+    const res  = await fetch(`${API}/doctor/add-record?${params}`, {
       method: 'POST',
       headers: authHeaders()
     });
@@ -254,9 +276,9 @@ async function submitRecord(e) {
     
     showToast('Record saved. Appointment marked as completed!', 'success');
 
-    // Store for report — include patient demographics from appointment context
+    // Store for report
     _lastRecord = {
-      patient_id:     patient_id,
+      patient_id,
       patient_name:   _apptContext.patient_name   || '',
       patient_age:    _apptContext.patient_age    || null,
       patient_gender: _apptContext.patient_gender || '',
@@ -265,15 +287,32 @@ async function submitRecord(e) {
       next_visit_date
     };
     document.getElementById('download-report-btn').style.display = 'inline-flex';
-    
+
+    // Permanently lock the form — prevents any re-submission for this appointment
+    btn.dataset.saved     = 'true';
+    btn.disabled          = true;
+    btn.textContent       = '✓ Saved';
+    btn.style.background  = 'var(--success)';
+    btn.style.borderColor = 'var(--success)';
+    btn.style.cursor      = 'default';
+    // Clear hidden appointment_id so any accidental network retry hits the backend guard
+    document.getElementById('rec-appointment-id').value = '';
+    // Make all fields read-only
+    ['rec-diagnosis', 'rec-medicines', 'rec-next-visit', 'rec-patient-id'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute('readonly', true);
+    });
+
     loadAppointments();
     loadStats();
+
   } catch (err) {
     showToast(err.message, 'error');
-  } finally {
-    btn.disabled = false;
+    // Re-enable only on failure so the doctor can correct and retry
+    btn.disabled    = false;
     btn.textContent = 'Save Medical Record';
   }
+  // NO finally re-enable — success keeps the button permanently locked
 }
 
 /* ── PRESCRIPTION REPORT ─────────────────────────────────────────────────── */
@@ -554,6 +593,132 @@ async function downloadReport() {
   win.document.close();
   win.focus();
   setTimeout(() => win.print(), 700);
+}
+
+/* ── PATIENT LOOKUP ──────────────────────────────────────────────────────── */
+function clearLookup() {
+  const inp = document.getElementById('lookup-patient-id');
+  if (inp) inp.value = '';
+  const res = document.getElementById('lookup-results');
+  if (res) res.innerHTML = '';
+}
+
+async function lookupPatient() {
+  const idVal = (document.getElementById('lookup-patient-id').value || '').trim();
+  const pid   = parseInt(idVal, 10);
+  const res   = document.getElementById('lookup-results');
+  const btn   = document.getElementById('lookup-btn');
+
+  if (!pid || pid < 1) {
+    res.innerHTML = `<div class="card" style="padding:20px; color:var(--danger); text-align:center;">⚠️ Please enter a valid Patient ID.</div>`;
+    return;
+  }
+
+  // Loading state
+  btn.disabled    = true;
+  btn.textContent = 'Searching…';
+  res.innerHTML   = `<div class="card" style="padding:32px; text-align:center; color:var(--text-muted);">⏳ Loading patient history…</div>`;
+
+  try {
+    const response = await fetch(`${API}/doctor/patient-history/${pid}`, { headers: authHeaders() });
+    const data     = await response.json();
+
+    if (!response.ok) {
+      res.innerHTML = `<div class="card" style="padding:32px; text-align:center;">
+        <div style="font-size:2.5rem; margin-bottom:12px;">🔍</div>
+        <strong style="color:var(--danger);">${escHtml(data.detail || 'Patient not found')}</strong>
+        <p style="margin-top:8px; color:var(--text-muted); font-size:0.9rem;">Verify the Patient ID and try again.</p>
+      </div>`;
+      return;
+    }
+
+    const p       = data.patient;
+    const records = data.records;
+    const gender  = p.gender ? (p.gender.charAt(0).toUpperCase() + p.gender.slice(1)) : '—';
+    const age     = p.age    ? `${p.age} yrs` : '—';
+    const phone   = p.phone  || '—';
+    const email   = p.email  || '—';
+
+    // ── Patient Demographics Card ─────────────────────────────────────────
+    const patientCard = `
+      <div class="card mb-6" style="border-left:4px solid var(--accent-primary); background:linear-gradient(135deg,var(--bg-card) 0%,rgba(6,182,212,0.04) 100%);">
+        <div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap;">
+          <div style="width:60px;height:60px;border-radius:50%;background:var(--accent-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:800;flex-shrink:0;">${escHtml(p.name.charAt(0).toUpperCase())}</div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <h3 style="margin:0;font-size:1.2rem;">${escHtml(p.name)}</h3>
+              <span class="badge badge-booked">Patient #${p.id}</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:14px;">
+              <div><div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Age</div><div style="font-weight:600;margin-top:2px;">${escHtml(age)}</div></div>
+              <div><div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Gender</div><div style="font-weight:600;margin-top:2px;">${escHtml(gender)}</div></div>
+              <div><div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Phone</div><div style="font-weight:600;margin-top:2px;">${escHtml(phone)}</div></div>
+              <div><div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Email</div><div style="font-weight:600;margin-top:2px;font-size:0.88rem;">${escHtml(email)}</div></div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // ── Medical Records ───────────────────────────────────────────────────
+    let recordsHtml = '';
+    if (records.length === 0) {
+      recordsHtml = `
+        <div class="card" style="padding:48px;text-align:center;color:var(--text-muted);">
+          <div style="font-size:2.5rem;margin-bottom:12px;">📂</div>
+          <strong>No medical records found</strong>
+          <p style="margin-top:6px;font-size:0.9rem;">This patient has no recorded diagnoses yet.</p>
+        </div>`;
+    } else {
+      const rows = records.map((r, i) => {
+        const d = r.created_at ? new Date(r.created_at) : null;
+        const dateStr = d ? d.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' }) : '—';
+        const timeStr = d ? d.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' }) : '';
+
+        const nextVisit = r.next_visit_date
+          ? `<div style="margin-top:12px;display:inline-flex;align-items:center;gap:6px;background:rgba(16,185,129,0.1);color:var(--success);border-radius:20px;padding:4px 14px;font-size:0.8rem;font-weight:600;">📅 Next Visit: ${escHtml(r.next_visit_date)}</div>`
+          : '';
+
+        const docLine = r.doctor_name
+          ? `<span style="font-size:0.8rem;color:var(--text-muted);">Dr. ${escHtml(r.doctor_name)}${r.specialization ? ' &bull; ' + escHtml(r.specialization) : ''}${r.hospital_name ? ' &bull; ' + escHtml(r.hospital_name) : ''}</span>`
+          : '';
+
+        return `
+          <div class="card mb-4" style="border-left:3px solid var(--accent-primary);">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+              <div>
+                <div style="font-size:0.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;">Record #${records.length - i} &bull; ${dateStr}${timeStr ? ' at ' + timeStr : ''}</div>
+                <div style="margin-top:4px;">${docLine}</div>
+              </div>
+            </div>
+            <div style="margin-bottom:12px;">
+              <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--accent-primary);font-weight:700;margin-bottom:6px;">Diagnosis</div>
+              <div style="font-size:0.92rem;line-height:1.7;white-space:pre-wrap;">${escHtml(r.diagnosis)}</div>
+            </div>
+            <div>
+              <div style="font-size:0.68rem;text-transform:uppercase;letter-spacing:1px;color:var(--success);font-weight:700;margin-bottom:6px;">Prescription &amp; Medicines</div>
+              <div style="font-size:0.92rem;line-height:1.7;white-space:pre-wrap;">${escHtml(r.medicines)}</div>
+            </div>
+            ${nextVisit}
+          </div>`;
+      }).join('');
+
+      recordsHtml = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3 style="margin:0;font-size:1rem;">Medical Records
+            <span style="color:var(--text-muted);font-weight:400;font-size:0.88rem;">(${records.length} record${records.length !== 1 ? 's' : ''} found)</span>
+          </h3>
+        </div>
+        ${rows}`;
+    }
+
+    res.innerHTML = patientCard + recordsHtml;
+
+  } catch (err) {
+    res.innerHTML = `<div class="card" style="padding:24px;color:var(--danger);text-align:center;">❌ Error: ${escHtml(err.message)}</div>`;
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = '🔍 Search';
+  }
 }
 
 /* ── Init ────────────────────────────────────────────────────────────────── */

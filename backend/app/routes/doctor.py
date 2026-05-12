@@ -79,6 +79,9 @@ def add_medical_record(
     if appt.status == 'cancelled':
         raise HTTPException(status_code=400, detail="Cannot add record to a cancelled appointment")
 
+    if appt.status == 'completed':
+        raise HTTPException(status_code=400, detail="A medical record has already been saved for this appointment. Duplicate entries are not allowed.")
+
     # Insert medical record
     db.execute(text("""
         INSERT INTO medical_records (patient_id, doctor_id, diagnosis, medicines, next_visit_date)
@@ -195,3 +198,47 @@ def _do_update_status(appointment_id: int, status: str, db: Session, user: dict)
 
     db.commit()
     return {"message": f"Appointment marked as {status}"}
+
+
+# ─── GET /doctor/patient-history/{patient_id} ────────────────────────────────
+# On-demand patient history lookup — no data is cached server-side
+@router.get("/patient-history/{patient_id}")
+def get_patient_history(
+    patient_id: int,
+    db: Session = Depends(get_db),
+    user=Depends(require_role("doctor"))
+):
+    # Verify patient exists and fetch demographics
+    patient = db.execute(text("""
+        SELECT p.id, u.name, p.age, p.gender, p.phone, u.email
+        FROM patients p
+        JOIN users u ON p.user_id = u.id
+        WHERE p.id = :patient_id
+    """), {"patient_id": patient_id}).fetchone()
+
+    if not patient:
+        raise HTTPException(status_code=404, detail=f"No patient found with ID #{patient_id}")
+
+    # Fetch all medical records for this patient (newest first)
+    records = db.execute(text("""
+        SELECT
+            mr.id,
+            mr.diagnosis,
+            mr.medicines,
+            mr.next_visit_date,
+            mr.created_at,
+            u.name  AS doctor_name,
+            d.specialization,
+            COALESCE(h.name, d.hospital_name) AS hospital_name
+        FROM medical_records mr
+        JOIN doctors d ON mr.doctor_id = d.id
+        JOIN users u ON d.user_id = u.id
+        LEFT JOIN hospitals h ON d.hospital_id = h.id
+        WHERE mr.patient_id = :patient_id
+        ORDER BY mr.created_at DESC
+    """), {"patient_id": patient_id}).fetchall()
+
+    return {
+        "patient": dict(patient._mapping),
+        "records": [dict(r._mapping) for r in records]
+    }
