@@ -300,11 +300,14 @@ async function downloadReport() {
   const genderRaw     = r.patient_gender || '';
   const patientGender = genderRaw ? (genderRaw.charAt(0).toUpperCase() + genderRaw.slice(1)) : '—';
 
-  const nextVisitRow = r.next_visit_date
-    ? `<tr>
-        <td class="lbl">Next Visit</td>
-        <td class="val" style="color:#16a34a;font-weight:700;">${escHtml(r.next_visit_date)}</td>
-       </tr>`
+  const nextVisitBlock = r.next_visit_date
+    ? `<div class="next-visit-block">
+        <span class="nv-icon">📅</span>
+        <div>
+          <div class="nv-label">Follow-up / Next Visit</div>
+          <div class="nv-date">${escHtml(r.next_visit_date)}</div>
+        </div>
+       </div>`
     : '';
 
   const html = `<!DOCTYPE html>
@@ -313,89 +316,237 @@ async function downloadReport() {
 <meta charset="UTF-8">
 <title>Prescription — Hospitum Core</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', Arial, sans-serif; background: #f1f5f9; padding: 30px; color: #1e293b; }
-  .rx { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
-  .hdr { background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%); padding: 30px 40px; color: #fff; }
-  .hdr .brand { font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; color: #06b6d4; margin-bottom: 10px; font-weight: 600; }
-  .hdr h1 { font-size: 1.5rem; font-weight: 700; }
-  .hdr .sub { font-size: 0.875rem; opacity: 0.7; margin-top: 4px; }
-  .accent { height: 4px; background: linear-gradient(90deg,#06b6d4,#3b82f6); }
-  .body { padding: 32px 40px; }
-  .meta { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; background: #f8fafc; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
-  .meta .lbl { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; }
-  .meta .val { font-size: 0.95rem; font-weight: 600; color: #0f172a; margin-top: 3px; }
-  .patient-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 16px 20px; margin-bottom: 24px; }
-  .patient-card-title { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; color: #1d4ed8; border-bottom: 1.5px solid #bfdbfe; padding-bottom: 6px; margin-bottom: 12px; }
-  .patient-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-  .patient-grid .lbl { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: #3b82f6; }
-  .patient-grid .val { font-size: 0.92rem; font-weight: 600; color: #0f172a; margin-top: 3px; }
-  table.dtl { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
-  table.dtl td.lbl { width: 160px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.8px; color: #64748b; padding: 8px 0; vertical-align: top; }
-  table.dtl td.val { font-size: 0.95rem; font-weight: 500; padding: 8px 0; }
-  .sec-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; color: #06b6d4; border-bottom: 1.5px solid #e2e8f0; padding-bottom: 6px; margin: 24px 0 12px; }
-  .sec-body { font-size: 0.95rem; line-height: 1.8; white-space: pre-wrap; color: #1e293b; }
-  .sig { margin-top: 48px; text-align: right; }
-  .sig-block { display: inline-block; text-align: center; border-top: 1.5px solid #1e293b; padding-top: 8px; min-width: 220px; }
-  .sig-block .name { font-weight: 700; font-size: 0.95rem; }
-  .sig-block .sub { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
-  .footer { text-align: center; padding: 18px 40px; border-top: 1px solid #e2e8f0; font-size: 0.75rem; color: #94a3b8; }
-  .rx-badge { display: inline-block; background: #dcfce7; color: #16a34a; border-radius: 20px; padding: 2px 14px; font-size: 0.75rem; font-weight: 700; margin-top: 8px; }
-  @media print { body { background:#fff; padding:0; } .rx { box-shadow: none; } }
+  body { font-family: 'Inter', Arial, sans-serif; background: #eef2f7; padding: 36px 20px; color: #1e293b; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ── Outer wrapper ── */
+  .rx-wrap { max-width: 800px; margin: 0 auto; }
+
+  /* ── Header ── */
+  .rx-header {
+    background: linear-gradient(135deg, #0b1120 0%, #0d2240 60%, #0f2e5e 100%);
+    border-radius: 16px 16px 0 0;
+    padding: 0;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+  }
+  .rx-header::after {
+    content: 'Rx';
+    position: absolute;
+    right: -10px; top: -18px;
+    font-size: 9rem; font-weight: 800; color: rgba(255,255,255,0.04);
+    line-height: 1; pointer-events: none; user-select: none;
+  }
+  .rx-header-left { padding: 32px 36px; flex: 1; }
+  .rx-brand-tag { font-size: 0.65rem; letter-spacing: 3px; text-transform: uppercase; color: #38bdf8; font-weight: 700; margin-bottom: 12px; }
+  .rx-doctor-name { font-size: 1.75rem; font-weight: 800; color: #ffffff; line-height: 1.2; }
+  .rx-doctor-sub { font-size: 0.875rem; color: rgba(255,255,255,0.55); margin-top: 6px; }
+  .rx-header-right {
+    background: rgba(255,255,255,0.04);
+    border-left: 1px solid rgba(255,255,255,0.07);
+    padding: 32px 32px;
+    display: flex; flex-direction: column; align-items: flex-end; justify-content: center; gap: 8px;
+    min-width: 200px;
+  }
+  .rx-stamp {
+    width: 60px; height: 60px;
+    border: 2.5px solid rgba(6,182,212,0.6);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; font-weight: 800; color: #06b6d4;
+    margin-bottom: 8px;
+  }
+  .rx-hospital-name { font-size: 0.8rem; font-weight: 600; color: rgba(255,255,255,0.8); text-align: right; }
+  .rx-ref { font-size: 0.68rem; color: rgba(255,255,255,0.35); text-align: right; }
+
+  /* ── Cyan accent strip ── */
+  .rx-stripe { height: 5px; background: linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6); }
+
+  /* ── Issue meta bar ── */
+  .rx-meta {
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex; gap: 0;
+  }
+  .rx-meta-cell {
+    flex: 1; padding: 16px 24px;
+    border-right: 1px solid #e2e8f0;
+  }
+  .rx-meta-cell:last-child { border-right: none; }
+  .rx-meta-cell .ml { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 1.2px; color: #94a3b8; font-weight: 600; margin-bottom: 4px; }
+  .rx-meta-cell .mv { font-size: 0.92rem; font-weight: 700; color: #0f172a; }
+
+  /* ── Main body ── */
+  .rx-body { background: #fff; padding: 32px 36px; }
+
+  /* ── Patient + Doctor info two-column ── */
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 28px;
+  }
+  .info-box {
+    border-radius: 10px; padding: 18px 20px;
+  }
+  .info-box.patient { background: #f0f9ff; border: 1px solid #bae6fd; }
+  .info-box.doctor  { background: #fafafa; border: 1px solid #e2e8f0; }
+  .info-box-title {
+    font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700;
+    padding-bottom: 8px; margin-bottom: 12px; border-bottom: 1.5px solid;
+  }
+  .info-box.patient .info-box-title { color: #0369a1; border-color: #bae6fd; }
+  .info-box.doctor  .info-box-title { color: #475569; border-color: #e2e8f0; }
+  .info-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
+  .info-row:last-child { margin-bottom: 0; }
+  .info-row .irl { font-size: 0.72rem; color: #94a3b8; }
+  .info-row .irv { font-size: 0.82rem; font-weight: 600; color: #0f172a; text-align: right; }
+  .info-box.patient .irv { color: #0c4a6e; }
+
+  /* ── Section titles ── */
+  .sec-hd {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.8px; font-weight: 700;
+    color: #06b6d4; margin: 24px 0 10px;
+  }
+  .sec-hd::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
+  .sec-body {
+    font-size: 0.92rem; line-height: 1.85; white-space: pre-wrap; color: #1e293b;
+    background: #f8fafc; border-radius: 8px; padding: 14px 18px;
+    border-left: 3px solid #06b6d4;
+  }
+  .sec-body.green { border-left-color: #10b981; background: #f0fdf4; }
+
+  /* ── Next visit ── */
+  .next-visit-block {
+    display: flex; align-items: center; gap: 14px;
+    background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+    border: 1px solid #6ee7b7; border-radius: 10px;
+    padding: 14px 20px; margin: 20px 0;
+  }
+  .nv-icon { font-size: 1.5rem; }
+  .nv-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1px; color: #059669; font-weight: 700; }
+  .nv-date { font-size: 1rem; font-weight: 800; color: #065f46; margin-top: 2px; }
+
+  /* ── Signature ── */
+  .sig-row { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; }
+  .sig-disclaimer { font-size: 0.72rem; color: #94a3b8; max-width: 300px; line-height: 1.5; }
+  .sig-block { text-align: center; }
+  .sig-line { border-top: 1.5px solid #334155; padding-top: 8px; min-width: 200px; }
+  .sig-name { font-weight: 700; font-size: 0.92rem; color: #0f172a; }
+  .sig-spec { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+  .sig-reg  { font-size: 0.68rem; color: #94a3b8; margin-top: 1px; }
+
+  /* ── Footer ── */
+  .rx-footer {
+    background: #0b1120; border-radius: 0 0 16px 16px;
+    padding: 16px 36px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .rx-footer .fl { font-size: 0.7rem; color: rgba(255,255,255,0.35); }
+  .rx-footer .fr { font-size: 0.68rem; color: #06b6d4; font-weight: 600; letter-spacing: 0.5px; }
+
+  @media print {
+    body { background: #fff; padding: 0; }
+    .rx-wrap { max-width: 100%; }
+    .rx-footer { -webkit-print-color-adjust: exact; }
+  }
 </style>
 </head>
 <body>
-<div class="rx">
-  <div class="hdr">
-    <div class="brand">Hospitum Core &mdash; Medical Prescription</div>
-    <h1>Dr. ${escHtml(doctorName)}</h1>
-    <div class="sub">${escHtml(specialization)}${hospitalName ? ' &bull; ' + escHtml(hospitalName) : ''}</div>
-    <div class="rx-badge">Rx</div>
-  </div>
-  <div class="accent"></div>
-  <div class="body">
-    <!-- Date / Time / ID row -->
-    <div class="meta">
-      <div><div class="lbl">Date</div><div class="val">${dateStr}</div></div>
-      <div><div class="lbl">Time</div><div class="val">${timeStr}</div></div>
-      <div><div class="lbl">Patient ID</div><div class="val">#${escHtml(String(r.patient_id))}</div></div>
-    </div>
+<div class="rx-wrap">
 
-    <!-- Patient Demographics Card -->
-    <div class="patient-card">
-      <div class="patient-card-title">Patient Details</div>
-      <div class="patient-grid">
-        <div><div class="lbl">Full Name</div><div class="val">${escHtml(patientName)}</div></div>
-        <div><div class="lbl">Age</div><div class="val">${escHtml(patientAge)}</div></div>
-        <div><div class="lbl">Gender</div><div class="val">${escHtml(patientGender)}</div></div>
-        <div><div class="lbl">Patient ID</div><div class="val">#${escHtml(String(r.patient_id))}</div></div>
+  <!-- ── HEADER ── -->
+  <div class="rx-header">
+    <div class="rx-header-left">
+      <div class="rx-brand-tag">Hospitum Core &mdash; Medical Prescription</div>
+      <div class="rx-doctor-name">Dr. ${escHtml(doctorName)}</div>
+      <div class="rx-doctor-sub">${escHtml(specialization)}</div>
+    </div>
+    <div class="rx-header-right">
+      <div class="rx-stamp">Rx</div>
+      <div class="rx-hospital-name">${escHtml(hospitalName) || 'Hospitum Core'}</div>
+      <div class="rx-ref">Digital Prescription</div>
+    </div>
+  </div>
+
+  <!-- ── CYAN STRIP ── -->
+  <div class="rx-stripe"></div>
+
+  <!-- ── ISSUE DATE / TIME ── -->
+  <div class="rx-meta">
+    <div class="rx-meta-cell">
+      <div class="ml">Issue Date</div>
+      <div class="mv">${dateStr}</div>
+    </div>
+    <div class="rx-meta-cell">
+      <div class="ml">Issue Time</div>
+      <div class="mv">${timeStr}</div>
+    </div>
+    <div class="rx-meta-cell">
+      <div class="ml">Prescription By</div>
+      <div class="mv">Dr. ${escHtml(doctorName)}</div>
+    </div>
+  </div>
+
+  <!-- ── BODY ── -->
+  <div class="rx-body">
+
+    <!-- Patient + Doctor Info Grid -->
+    <div class="info-grid">
+      <div class="info-box patient">
+        <div class="info-box-title">Patient Details</div>
+        <div class="info-row"><span class="irl">Full Name</span><span class="irv">${escHtml(patientName)}</span></div>
+        <div class="info-row"><span class="irl">Age</span><span class="irv">${escHtml(patientAge)}</span></div>
+        <div class="info-row"><span class="irl">Gender</span><span class="irv">${escHtml(patientGender)}</span></div>
+        <div class="info-row"><span class="irl">Patient ID</span><span class="irv">#${escHtml(String(r.patient_id))}</span></div>
+      </div>
+      <div class="info-box doctor">
+        <div class="info-box-title">Attending Physician</div>
+        <div class="info-row"><span class="irl">Doctor</span><span class="irv">Dr. ${escHtml(doctorName)}</span></div>
+        <div class="info-row"><span class="irl">Specialization</span><span class="irv">${escHtml(specialization) || '—'}</span></div>
+        <div class="info-row"><span class="irl">Hospital</span><span class="irv">${escHtml(hospitalName) || '—'}</span></div>
+        <div class="info-row"><span class="irl">Date</span><span class="irv">${dateStr}</span></div>
       </div>
     </div>
 
-    <!-- Next visit (if set) -->
-    <table class="dtl">
-      ${nextVisitRow}
-    </table>
+    <!-- Next visit (only if set) -->
+    ${nextVisitBlock}
 
-    <div class="sec-title">Diagnosis / Complaint</div>
+    <!-- Diagnosis -->
+    <div class="sec-hd">Diagnosis &amp; Complaint</div>
     <div class="sec-body">${escHtml(r.diagnosis)}</div>
-    <div class="sec-title">Prescription &amp; Medicines</div>
-    <div class="sec-body">${escHtml(r.medicines)}</div>
-    <div class="sig">
+
+    <!-- Prescription -->
+    <div class="sec-hd">Prescription &amp; Medicines</div>
+    <div class="sec-body green">${escHtml(r.medicines)}</div>
+
+    <!-- Signature -->
+    <div class="sig-row">
+      <div class="sig-disclaimer">
+        This prescription is digitally generated and valid only when issued through Hospitum Core. Retain a copy for your records.
+      </div>
       <div class="sig-block">
-        <div class="name">Dr. ${escHtml(doctorName)}</div>
-        <div class="sub">${escHtml(specialization)}</div>
+        <div class="sig-line">
+          <div class="sig-name">Dr. ${escHtml(doctorName)}</div>
+          <div class="sig-spec">${escHtml(specialization)}</div>
+          <div class="sig-reg">${escHtml(hospitalName)}</div>
+        </div>
       </div>
     </div>
+
+  </div><!-- /rx-body -->
+
+  <!-- ── FOOTER ── -->
+  <div class="rx-footer">
+    <div class="fl">Generated on ${dateStr} at ${timeStr} &bull; Hospitum Core EHR System</div>
+    <div class="fr">hospitumcore.health</div>
   </div>
-  <div class="footer">
-    This is a digitally generated prescription from Hospitum Core. Please retain a copy for your records.
-    &bull; Generated on ${dateStr} at ${timeStr}
-  </div>
-</div>
+
+</div><!-- /rx-wrap -->
 </body>
 </html>`;
+
 
 
   const win = window.open('', '_blank', 'width=900,height=720');
