@@ -22,4 +22,35 @@ class User(AbstractUser):
 
     def __str__(self):
         return f"{self.email} - {self.role}"
+
+class Patient(models.Model):
+
+    GENDER_CHOICES = (
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    )
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    age = models.PositiveIntegerField()
+
+    gender = models.CharField(
+        max_length=10,
+        choices=GENDER_CHOICES
+    )
+
+    phone = models.CharField(
+        max_length=15
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return self.user.email
    
