@@ -53,4 +53,34 @@ class Patient(models.Model):
 
     def __str__(self):
         return self.user.email
-   
+
+class Doctor(models.Model):
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE
+    )
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE
+    )
+
+    specialization = models.CharField(
+        max_length=255
+    )
+
+    phone = models.CharField(
+        max_length=15
+    )
+
+    is_active = models.BooleanField(
+        default=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return self.user.email
