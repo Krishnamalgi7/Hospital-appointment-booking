@@ -31,6 +31,17 @@ class Patient(models.Model):
         ('other', 'Other'),
     )
 
+    BLOOD_GROUP_CHOICES = (
+    ('A+', 'A+'),
+    ('A-', 'A-'),
+    ('B+', 'B+'),
+    ('B-', 'B-'),
+    ('O+', 'O+'),
+    ('O-', 'O-'),
+    ('AB+', 'AB+'),
+    ('AB-', 'AB-'),
+    )
+
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE
@@ -42,6 +53,14 @@ class Patient(models.Model):
         max_length=10,
         choices=GENDER_CHOICES
     )
+
+
+    blood_group = models.CharField(
+        max_length=5,
+        choices=BLOOD_GROUP_CHOICES
+    )
+
+    address = models.TextField()
 
     phone = models.CharField(
         max_length=15
