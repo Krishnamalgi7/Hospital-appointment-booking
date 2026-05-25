@@ -1,6 +1,6 @@
 # Hospitum Core — Enterprise Hospital Management SaaS
 
-Hospitum Core is a production-grade Enterprise Hospital Appointment Booking and Management System built with **FastAPI**, **MySQL**, **HTML5**, **CSS3**, and **Vanilla JavaScript**.
+Hospitum Core is a production-grade Enterprise Hospital Appointment Booking and Management System built with **Django**, **MySQL**, **HTML5**, **CSS3**, and **Vanilla JavaScript**.
 
 The platform delivers a premium SaaS experience across three distinct roles with a fully responsive, modern design system featuring a dynamic **Light/Dark Mode architecture**.
 
