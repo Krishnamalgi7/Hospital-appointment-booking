@@ -6,31 +6,52 @@ Register
 
 {% block content %}
 
-{% if form.errors %}
+<div class="auth-container">
 
-<div style="color:red;">
+    <div class="auth-card">
 
-    {{ form.errors }}
+        <h1 class="auth-title">
+            Hospitum Core
+        </h1>
+
+        <p class="auth-subtitle">
+            Create your patient account
+        </p>
+
+        {% if form.errors %}
+
+        <div class="error-box">
+
+            {{ form.errors }}
+
+        </div>
+
+        {% endif %}
+
+        <form method="POST">
+
+            {% csrf_token %}
+
+            {{ form.as_p }}
+
+            <button type="submit" class="auth-btn">
+                Register
+            </button>
+
+        </form>
+
+        <div class="auth-link">
+
+            Already have an account?
+
+            <a href="{% url 'login' %}">
+                Login
+            </a>
+
+        </div>
+
+    </div>
 
 </div>
-
-{% endif %}
-<h1>Patient Registration</h1>
-
-<form method="POST">
-
-    {% csrf_token %}
-
-    {{ form.as_p }}
-
-    <button type="submit">
-        Register
-    </button>
-
-</form>
-
-<a href="{% url 'login' %}">
-    Login
-</a>
 
 {% endblock %}
