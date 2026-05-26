@@ -63,7 +63,15 @@ def login_view(request):
 
                 login(request, user)
 
-                return redirect('home')
+                if user.role == 'admin':
+
+                    return redirect('admin-dashboard')
+
+                elif user.role == 'doctor':
+
+                    return redirect('doctor-dashboard')
+
+                return redirect('patient-dashboard')
 
     return render(
         request,
@@ -77,3 +85,26 @@ def logout_view(request):
     logout(request)
 
     return redirect('login')
+
+def admin_dashboard(request):
+
+    return render(
+        request,
+        'dashboards/admin_dashboard.html'
+    )
+
+
+def doctor_dashboard(request):
+
+    return render(
+        request,
+        'dashboards/doctor_dashboard.html'
+    )
+
+
+def patient_dashboard(request):
+
+    return render(
+        request,
+        'dashboards/patient_dashboard.html'
+    )
