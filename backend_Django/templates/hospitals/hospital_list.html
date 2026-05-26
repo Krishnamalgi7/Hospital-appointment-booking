@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<h1>
+    Hospitals
+</h1>
+
+<a href="{% url 'create-hospital' %}">
+    Add Hospital
+</a>
+
+<hr>
+
+{% for hospital in hospitals %}
+
+<div>
+
+    <h3>
+        {{ hospital.name }}
+    </h3>
+
+    <p>
+        {{ hospital.location }}
+    </p>
+
+    <a href="{{ hospital.map_url }}">
+        View Location
+    </a>
+
+    <br><br>
+
+    <a href="{% url 'update-hospital' hospital.id %}">
+        Edit
+    </a>
+
+    <a href="{% url 'delete-hospital' hospital.id %}">
+        Delete
+    </a>
+
+</div>
+
+<hr>
+
+{% endfor %}
+
+{% endblock %}

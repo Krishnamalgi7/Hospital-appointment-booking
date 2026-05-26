@@ -32,4 +32,9 @@ urlpatterns = [
         'accounts/',
         include('accounts.urls')
     ),
+
+    path(
+        'hospitals/',
+        include('hospitals.urls')
+    ),
 ]
