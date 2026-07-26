@@ -10,7 +10,7 @@ app.use(express.json());
 // Test Route
 app.get("/", (req, res) => {
     res.json({
-        message: "Hospital Management API is Running....."
+        message: "Hospital Management API is Running...."
     });
 });
 
