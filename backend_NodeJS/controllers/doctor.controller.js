@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const User = require("../models/user.model");
 const Doctor = require("../models/doctor.model");
 const db = require("../config/db");
+const { sendDoctorCredentials } = require("../utils/email");
 
 const createDoctor = async (req, res) => {
   const {
@@ -69,7 +70,7 @@ const createDoctor = async (req, res) => {
 
           return db.rollback(() => {
             return res.status(500).json({
-              message: "Unable to create doctor account...",
+              message: "Unable to create doctor account.",
               error: err.message,
             });
           });
@@ -89,11 +90,12 @@ const createDoctor = async (req, res) => {
             return db.rollback(() => {
               return res.status(500).json({
                 message: "Unable to create doctor profile.",
+                error: err.message
               });
             });
           }
 
-          db.commit((err) => {
+          db.commit(async (err) => {
             if (err) {
               return db.rollback(() => {
                 return res.status(500).json({
@@ -102,10 +104,27 @@ const createDoctor = async (req, res) => {
               });
             }
 
-            return res.status(201).json({
-              message: "Doctor created successfully.",
-              temporaryPassword,
-            });
+          try {
+
+          await sendDoctorCredentials(
+              email,
+              name,
+              temporaryPassword
+          );
+
+          return res.status(201).json({
+              message: "Doctor created successfully. Credentials sent to email."
+          });
+
+          } catch (emailError) {
+
+          console.error(emailError);
+
+          return res.status(201).json({
+              message: "Doctor created successfully, but email could not be sent.",
+              temporaryPassword
+          });
+        }
           });
         });
       });
